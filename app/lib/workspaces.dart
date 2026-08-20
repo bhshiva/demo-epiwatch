@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'models/nav_destination.dart';
 import 'models/session.dart';
-import 'screens/placeholder_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/lab_dashboard_screen.dart';
+import 'screens/lab_worklist_screen.dart';
+import 'screens/patient_records_screen.dart';
 import 'screens/shell_screen.dart';
+import 'screens/submit_isolate_screen.dart';
+import 'screens/submit_report_screen.dart';
 
 /// Maps a signed-in role to the workspace it gets.
 ///
@@ -24,19 +29,24 @@ ShellScreen _doctorWorkspace(String userName) => ShellScreen(
           key: 'dashboard',
           label: 'Dashboard',
           icon: Icons.space_dashboard_outlined,
-          builder: (_) => const PlaceholderScreen(title: 'Doctor Dashboard'),
+          builder: (context) => DashboardScreen(
+            doctorName: userName,
+            facilityName: 'Sunrise Multispeciality Clinic',
+            onSubmitReport: () => ShellNav.of(context).navigateTo('submit'),
+            onViewRecords: () => ShellNav.of(context).navigateTo('records'),
+          ),
         ),
         NavDestination(
           key: 'records',
           label: 'Patient Records',
           icon: Icons.folder_shared_outlined,
-          builder: (_) => const PlaceholderScreen(title: 'Patient Records'),
+          builder: (_) => const PatientRecordsScreen(),
         ),
         NavDestination(
           key: 'submit',
           label: 'Submit Report',
           icon: Icons.assignment_outlined,
-          builder: (_) => const PlaceholderScreen(title: 'Submit Report'),
+          builder: (_) => const SubmitReportScreen(),
         ),
       ],
     );
@@ -50,19 +60,22 @@ ShellScreen _labWorkspace(String userName) => ShellScreen(
           key: 'lab-dashboard',
           label: 'Lab Dashboard',
           icon: Icons.biotech_outlined,
-          builder: (_) => const PlaceholderScreen(title: 'Lab Dashboard'),
+          builder: (context) => LabDashboardScreen(
+            userName: userName,
+            onRecordIsolate: () => ShellNav.of(context).navigateTo('submit-isolate'),
+          ),
         ),
         NavDestination(
           key: 'worklist',
           label: 'Worklist',
           icon: Icons.list_alt_outlined,
-          builder: (_) => const PlaceholderScreen(title: 'Culture Worklist'),
+          builder: (_) => const LabWorklistScreen(),
         ),
         NavDestination(
           key: 'submit-isolate',
           label: 'Culture & AST',
           icon: Icons.science_outlined,
-          builder: (_) => const PlaceholderScreen(title: 'Record Culture & AST'),
+          builder: (_) => const SubmitIsolateScreen(),
         ),
       ],
     );

@@ -85,10 +85,10 @@ void main() {
   testWidgets('tapping a destination swaps the content', (tester) async {
     await _pumpWorkspace(tester, _session('lab'));
 
-    expect(find.text('Not yet ported from the desktop client.'), findsOneWidget);
+    expect(find.text('Laboratory Workspace'), findsOneWidget);
     await tester.tap(find.text('Culture & AST'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Record Culture & AST'), findsOneWidget);
+    expect(find.text('Record Culture & Susceptibility'), findsOneWidget);
   });
 }

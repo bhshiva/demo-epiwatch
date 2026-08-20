@@ -30,4 +30,12 @@ abstract final class AppColors {
 
   static const border = Color(0xFFD1DFD6);
   static const primaryButton = Color(0xFF1B4D3E);
+
+  // Colorblind-safe categorical order used for chart series, from
+  // ChartTheme.cs in the WPF client.
+  static const chartAmber = Color(0xFFEDA100);
+  static const chartBlue = Color(0xFF2A78D6);
+  static const chartOrange = Color(0xFFEB6834);
+  static const chartGreen = Color(0xFF1BAF7A);
+  static const chartSeries = [chartAmber, chartBlue, chartOrange, chartGreen];
 }

@@ -1,6 +1,10 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../models/dashboard_models.dart';
+import '../models/lab_models.dart';
+import '../models/patient_models.dart';
+import '../models/report_models.dart';
 import '../models/session.dart';
 import 'api_exceptions.dart';
 
@@ -42,6 +46,42 @@ class ApiClient {
           data: {'email': email, 'password': password},
         ));
     return Session.fromJson(res);
+  }
+
+  Future<DashboardSummary> getDashboardSummary() async {
+    final res = await get('/dashboard/summary');
+    return DashboardSummary.fromJson(res);
+  }
+
+  Future<List<ReportSummary>> getReports() async {
+    final res = await getList('/reports');
+    return res.map((e) => ReportSummary.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<Map<String, dynamic>> createReport(ReportCreateRequest request) =>
+      post('/reports', request.toJson());
+
+  Future<List<PatientSearchResult>> searchPatients(String query) async {
+    if (query.trim().isEmpty) return [];
+    final res = await getList('/patients/search', query: {'q': query.trim()});
+    return res.map((e) => PatientSearchResult.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<PatientMatchCandidate>> matchPatients(Map<String, dynamic> body) async {
+    final res = await _sendRaw(() => _dio.post<dynamic>('/patients/match', data: body));
+    return (res as List<dynamic>)
+        .map((e) => PatientMatchCandidate.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<AbhaVerifyResult> verifyAbha(String abhaNumber) async {
+    final res = await post('/patients/verify-abha', {'abha_number': abhaNumber});
+    return AbhaVerifyResult.fromJson(res);
+  }
+
+  Future<List<PatientHistoryEntry>> patientHistory(String patientId) async {
+    final res = await getList('/patients/$patientId/history');
+    return res.map((e) => PatientHistoryEntry.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? query}) =>
@@ -108,4 +148,24 @@ class ApiClient {
           'Cannot reach the server. Check that the backend is running.',
         _ => 'Network error: ${e.message ?? 'unknown'}',
       };
+
+  Future<LabSummary> getLabSummary() async {
+    final res = await get('/lab/summary');
+    return LabSummary.fromJson(res);
+  }
+
+  Future<List<Isolate>> getWorklist() async {
+    final res = await getList('/lab/worklist');
+    return res.map((e) => Isolate.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Isolate>> getIsolates() async {
+    final res = await getList('/lab/isolates');
+    return res.map((e) => Isolate.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<Isolate> createIsolate(IsolateCreateRequest request) async {
+    final res = await post('/lab/isolates', request.toJson());
+    return Isolate.fromJson(res);
+  }
 }

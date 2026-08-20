@@ -8,6 +8,24 @@ import '../theme/app_colors.dart';
 /// narrow windows get the same destinations, laid out for the form factor.
 const kCompactBreakpoint = 900.0;
 
+/// Lets a screen ask the shell to switch tabs by key (e.g. the dashboard's
+/// "Submit Report" button), without the screen knowing the destination list
+/// or its own index in it.
+class ShellNav extends InheritedWidget {
+  final void Function(String key) navigateTo;
+
+  const ShellNav({super.key, required this.navigateTo, required super.child});
+
+  static ShellNav of(BuildContext context) {
+    final nav = context.dependOnInheritedWidgetOfExactType<ShellNav>();
+    assert(nav != null, 'ShellNav.of() called outside a ShellScreen');
+    return nav!;
+  }
+
+  @override
+  bool updateShouldNotify(ShellNav oldWidget) => navigateTo != oldWidget.navigateTo;
+}
+
 class ShellScreen extends ConsumerStatefulWidget {
   final String roleLabel;
   final String roleCaption;
@@ -34,41 +52,57 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     final isCompact = MediaQuery.sizeOf(context).width < kCompactBreakpoint;
     final current = widget.destinations[_index];
 
-    return Scaffold(
-      appBar: isCompact
-          ? AppBar(
-              backgroundColor: AppColors.primaryButton,
-              foregroundColor: Colors.white,
-              title: Text(current.label),
-              actions: [_SignOutButton(onTap: _signOut, compact: true)],
-            )
-          : null,
-      body: Row(
-        children: [
-          if (!isCompact)
-            _Sidebar(
-              roleLabel: widget.roleLabel,
-              roleCaption: widget.roleCaption,
-              userName: widget.userName,
-              destinations: widget.destinations,
-              selectedIndex: _index,
-              onSelect: (i) => setState(() => _index = i),
-              onSignOut: _signOut,
+    return ShellNav(
+      navigateTo: _navigateTo,
+      child: Scaffold(
+        appBar: isCompact
+            ? AppBar(
+                backgroundColor: AppColors.primaryButton,
+                foregroundColor: Colors.white,
+                title: Text(current.label),
+                actions: [_SignOutButton(onTap: _signOut, compact: true)],
+              )
+            : null,
+        body: Row(
+          children: [
+            if (!isCompact)
+              _Sidebar(
+                roleLabel: widget.roleLabel,
+                roleCaption: widget.roleCaption,
+                userName: widget.userName,
+                destinations: widget.destinations,
+                selectedIndex: _index,
+                onSelect: (i) => setState(() => _index = i),
+                onSignOut: _signOut,
+              ),
+            Expanded(
+              child: IndexedStack(
+                index: _index,
+                children: [
+                  for (final d in widget.destinations) Builder(builder: d.builder),
+                ],
+              ),
             ),
-          Expanded(child: current.builder(context)),
-        ],
+          ],
+        ),
+        bottomNavigationBar: isCompact
+            ? NavigationBar(
+                selectedIndex: _index,
+                onDestinationSelected: (i) => setState(() => _index = i),
+                destinations: [
+                  for (final d in widget.destinations)
+                    NavigationDestination(icon: Icon(d.icon), label: d.label),
+                ],
+              )
+            : null,
       ),
-      bottomNavigationBar: isCompact
-          ? NavigationBar(
-              selectedIndex: _index,
-              onDestinationSelected: (i) => setState(() => _index = i),
-              destinations: [
-                for (final d in widget.destinations)
-                  NavigationDestination(icon: Icon(d.icon), label: d.label),
-              ],
-            )
-          : null,
     );
+  }
+
+  void _navigateTo(String key) {
+    final i = widget.destinations.indexWhere((d) => d.key == key);
+    if (i == -1) return; // An unknown key leaves the current tab in place.
+    setState(() => _index = i);
   }
 
   void _signOut() => ref.read(authProvider.notifier).signOut();
