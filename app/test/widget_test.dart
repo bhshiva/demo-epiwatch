@@ -28,8 +28,20 @@ const _allRoleLabels = [
   'Submit Report',
   'Worklist',
   'Culture & AST',
-  'Surveillance',
+  'Live Surveillance',
+  'Disease Trends',
+  'Geographic Clusters',
+  'National Statistics',
+  'Alerts',
   'Applications',
+];
+
+const _healthAuthorityLabels = [
+  'Live Surveillance',
+  'Disease Trends',
+  'Geographic Clusters',
+  'National Statistics',
+  'Alerts',
 ];
 
 Future<void> _pumpWorkspace(WidgetTester tester, Session session,
@@ -79,15 +91,17 @@ void main() {
       }
     });
 
-    testWidgets('a health authority user gets a read-only surveillance destination and badge',
+    testWidgets('a health authority user gets the surveillance destinations and badge',
         (tester) async {
       await _pumpWorkspace(tester, _session('health_authority'));
 
       expect(find.text('HEALTH AUTHORITY'), findsOneWidget);
-      expect(find.text('Surveillance: Dr. Meera Iyer'), findsOneWidget);
-      expect(find.text('Surveillance'), findsWidgets);
+      expect(find.text('Surveillance Officer: Dr. Meera Iyer'), findsOneWidget);
+      for (final label in _healthAuthorityLabels) {
+        expect(find.text(label), findsWidgets, reason: '$label missing from the health authority workspace');
+      }
       for (final label in _allRoleLabels) {
-        if (label == 'Surveillance') continue;
+        if (_healthAuthorityLabels.contains(label)) continue;
         expect(find.text(label), findsNothing,
             reason: '$label leaked into the health authority workspace');
       }

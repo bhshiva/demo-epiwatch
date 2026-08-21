@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/surveillance_models.dart';
+import '../services/health_authority_demo_data.dart';
 import '../state/surveillance_dashboard.dart';
 import '../theme/app_colors.dart';
 import '../widgets/section_card.dart';
@@ -50,12 +51,14 @@ class _HealthAuthorityDashboardScreenState
                 _ErrorBanner(message: state.error!),
                 const SizedBox(height: 18),
               ],
-              const Text('Statewide Surveillance',
+              const Text('Live Surveillance',
                   style: TextStyle(
                       fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
               const SizedBox(height: 6),
               MutedText('Logged-in: ${widget.userName}'),
               const SizedBox(height: 22),
+              _KpiRow(summary: state.summary, alertCount: HealthAuthorityDemoData.alerts.length),
+              const SizedBox(height: 18),
               if (isWide)
                 IntrinsicHeight(
                   child: Row(
@@ -63,7 +66,7 @@ class _HealthAuthorityDashboardScreenState
                     children: [
                       Expanded(flex: 3, child: _OutbreakMap(facilities: state.facilities)),
                       const SizedBox(width: 18),
-                      Expanded(flex: 2, child: _WatchList(facilities: state.watchList)),
+                      Expanded(flex: 2, child: _EmergingSignalsPanel()),
                     ],
                   ),
                 )
@@ -72,9 +75,11 @@ class _HealthAuthorityDashboardScreenState
                   children: [
                     _OutbreakMap(facilities: state.facilities),
                     const SizedBox(height: 18),
-                    _WatchList(facilities: state.watchList),
+                    const _EmergingSignalsPanel(),
                   ],
                 ),
+              const SizedBox(height: 18),
+              _WatchList(facilities: state.watchList),
               const SizedBox(height: 18),
               _DiseaseDailyChart(data: state.diseaseDaily),
             ],
@@ -105,6 +110,173 @@ class _ErrorBanner extends StatelessWidget {
                   style: const TextStyle(color: AppColors.statusCritical, fontSize: 13))),
         ]),
       );
+}
+
+class _KpiRow extends StatelessWidget {
+  final SurveillanceSummary summary;
+  final int alertCount;
+  const _KpiRow({required this.summary, required this.alertCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final tiles = [
+      ('${summary.facilitiesReporting}', 'Facilities Reporting (30d)', Icons.add_business_outlined,
+          AppColors.statusNormal),
+      ('${summary.reportsToday}', 'Reports Today', Icons.description_outlined, AppColors.accentBlue),
+      // Emerging signals/active alerts: illustrative counts, no detection
+      // engine behind them yet -- see HealthAuthorityDemoData's doc comment.
+      ('${HealthAuthorityDemoData.emergingSignals.length}', 'Emerging Signals (illustrative)',
+          Icons.show_chart, AppColors.statusMonitoring),
+      ('$alertCount', 'Active Alerts (illustrative)', Icons.warning_amber_outlined,
+          AppColors.statusCritical),
+    ];
+    return LayoutBuilder(builder: (context, constraints) {
+      final perRow = constraints.maxWidth >= 900 ? 4 : (constraints.maxWidth >= 500 ? 2 : 1);
+      return Wrap(
+        spacing: 16,
+        runSpacing: 16,
+        children: [
+          for (final t in tiles)
+            SizedBox(
+              width: (constraints.maxWidth - 16 * (perRow - 1)) / perRow,
+              child: SectionCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          MutedText(t.$2),
+                          const SizedBox(height: 6),
+                          Text(t.$1,
+                              style: TextStyle(
+                                  fontSize: 28, fontWeight: FontWeight.w700, color: t.$4)),
+                        ],
+                      ),
+                    ),
+                    Icon(t.$3, color: t.$4.withValues(alpha: 0.6), size: 22),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+    });
+  }
+}
+
+/// Illustrative -- see HealthAuthorityDemoData's doc comment. Not built
+/// from any detection engine.
+class _EmergingSignalsPanel extends StatelessWidget {
+  const _EmergingSignalsPanel();
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(child: SectionTitle('Emerging Signals')),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.statusMonitoring.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('ILLUSTRATIVE',
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: AppColors.statusMonitoring)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const MutedText('No detection engine behind these yet -- see ML_PLAN.md.'),
+            const SizedBox(height: 14),
+            for (final signal in HealthAuthorityDemoData.emergingSignals)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.bgTertiary,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _severityColor(signal.severity).withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _SeverityChip(severity: signal.severity),
+                        const Spacer(),
+                        Text(signal.detectedAgo,
+                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(signal.title,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    const SizedBox(height: 2),
+                    MutedText(signal.region),
+                    const SizedBox(height: 8),
+                    // Wrap, not Row+Spacer: the combined text can exceed a
+                    // narrow sidebar card's width (caught by a real
+                    // RenderFlex overflow in the widget test, not just
+                    // narrow-window guesswork), and Wrap degrades to a
+                    // second line instead of clipping.
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 4,
+                      children: [
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          const MutedText('Confidence '),
+                          Text(signal.confidenceLabel,
+                              style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textSecondary)),
+                        ]),
+                        Text(signal.deviationLabel,
+                            style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.statusCritical)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+}
+
+Color _severityColor(String severity) => switch (severity) {
+      'CRITICAL' => AppColors.statusCritical,
+      'HIGH' => AppColors.statusElevated,
+      'MEDIUM' => AppColors.statusMonitoring,
+      _ => AppColors.textMuted,
+    };
+
+class _SeverityChip extends StatelessWidget {
+  final String severity;
+  const _SeverityChip({required this.severity});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _severityColor(severity);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+      child: Text(severity,
+          style: const TextStyle(
+              fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.4, color: Colors.white)),
+    );
+  }
 }
 
 class _OutbreakMap extends StatelessWidget {

@@ -58,3 +58,51 @@ def test_metrics_returns_a_list_for_a_known_metric():
     )
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
+
+
+def test_summary_returns_non_negative_counts():
+    resp = client.get("/surveillance/summary", headers=_ha_headers())
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["facilities_reporting"] >= 0
+    assert body["reports_today"] >= 0
+
+
+def test_summary_is_live_not_cached():
+    """Unlike the other endpoints here, /summary must reflect a change
+    immediately -- it's not read from the batched analytics.* tables."""
+    from sqlalchemy import text
+
+    from app.db import SessionLocal
+
+    before = client.get("/surveillance/summary", headers=_ha_headers()).json()
+
+    db = SessionLocal()
+    try:
+        facility_id = db.execute(text("SELECT facility_id FROM master.facilities LIMIT 1")).scalar()
+        doctor_id = db.execute(text("SELECT doctor_id FROM master.doctors WHERE role = 'doctor' LIMIT 1")).scalar()
+        patient_id = db.execute(
+            text("INSERT INTO master.patients (age_group, sex, district) VALUES ('18-40','F','Pune') RETURNING patient_id")
+        ).scalar()
+        db.execute(
+            text(
+                "INSERT INTO raw.patient_reports (patient_id, doctor_id, facility_id, report_date, diagnosis) "
+                "VALUES (:p, :d, :f, CURRENT_DATE, 'Live summary test')"
+            ),
+            {"p": patient_id, "d": doctor_id, "f": facility_id},
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    after = client.get("/surveillance/summary", headers=_ha_headers()).json()
+    assert after["reports_today"] == before["reports_today"] + 1
+
+
+def test_districts_includes_the_seeded_facilitys_district():
+    resp = client.get("/surveillance/districts", headers=_ha_headers())
+    assert resp.status_code == 200
+    body = resp.json()
+    assert any(d["district"] == "Pune" for d in body)
+    for row in body:
+        assert row["facility_count"] >= 1

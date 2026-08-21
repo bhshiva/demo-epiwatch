@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.db import get_session
 from app.deps import require_role
 from app.models import Doctor
-from app.schemas import DiseaseDailyPoint, FacilityGeo, SurveillanceMetricOut
+from app.schemas import DiseaseDailyPoint, DistrictSummary, FacilityGeo, SurveillanceMetricOut, SurveillanceSummary
 from app.services import cache
 
 router = APIRouter(prefix="/surveillance", tags=["surveillance"])
@@ -26,6 +26,64 @@ router = APIRouter(prefix="/surveillance", tags=["surveillance"])
 health_authority_user = require_role("health_authority")
 
 CACHE_TTL_SECONDS = 5 * 60
+
+
+@router.get("/summary", response_model=SurveillanceSummary)
+def summary(
+    db: Session = Depends(get_session),
+    user: Doctor = Depends(health_authority_user),
+):
+    """
+    Headline KPI tiles. Deliberately NOT cached and NOT read from the
+    batched analytics.* tables -- "Live Surveillance" means live: these
+    query raw.patient_reports directly so the tiles never lag behind the
+    5-hourly ETL cycle the rest of this router's endpoints accept.
+    """
+    facilities_reporting = db.execute(
+        text(
+            "SELECT COUNT(DISTINCT facility_id) FROM raw.patient_reports "
+            "WHERE report_date >= CURRENT_DATE - INTERVAL '30 days'"
+        )
+    ).scalar()
+    reports_today = db.execute(
+        text("SELECT COUNT(*) FROM raw.patient_reports WHERE report_date = CURRENT_DATE")
+    ).scalar()
+    return SurveillanceSummary(
+        facilities_reporting=facilities_reporting or 0,
+        reports_today=reports_today or 0,
+    )
+
+
+@router.get("/districts", response_model=list[DistrictSummary])
+def districts(
+    db: Session = Depends(get_session),
+    user: Doctor = Depends(health_authority_user),
+):
+    """Per-district facility/case-count rollup, for the region drill-down panel."""
+    cache_key = "surveillance:districts"
+    cached = cache.get_json(cache_key)
+    if cached is not None:
+        return cached
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                f.district, f.state,
+                COUNT(DISTINCT f.facility_id) AS facility_count,
+                COALESCE(SUM(df.case_count), 0) AS recent_case_count
+            FROM master.facilities f
+            LEFT JOIN analytics.disease_facility df
+                ON df.facility_id = f.facility_id
+               AND df.window_end >= CURRENT_DATE - INTERVAL '7 days'
+            GROUP BY f.district, f.state
+            ORDER BY recent_case_count DESC
+            """
+        )
+    ).mappings().all()
+    result = [dict(r) for r in rows]
+    cache.set_json(cache_key, result, ttl=CACHE_TTL_SECONDS)
+    return result
 
 
 @router.get("/disease-daily", response_model=list[DiseaseDailyPoint])

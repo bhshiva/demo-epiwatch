@@ -79,3 +79,38 @@ class FacilityGeo {
         recentCaseCount: json['recent_case_count'] as int,
       );
 }
+
+/// Live (uncached, unbatched) headline counts -- see backend
+/// surveillance.py's docstring on GET /surveillance/summary.
+class SurveillanceSummary {
+  final int facilitiesReporting;
+  final int reportsToday;
+
+  const SurveillanceSummary({required this.facilitiesReporting, required this.reportsToday});
+
+  factory SurveillanceSummary.fromJson(Map<String, dynamic> json) => SurveillanceSummary(
+        facilitiesReporting: json['facilities_reporting'] as int,
+        reportsToday: json['reports_today'] as int,
+      );
+}
+
+class DistrictSummary {
+  final String district;
+  final String state;
+  final int facilityCount;
+  final int recentCaseCount;
+
+  const DistrictSummary({
+    required this.district,
+    required this.state,
+    required this.facilityCount,
+    required this.recentCaseCount,
+  });
+
+  factory DistrictSummary.fromJson(Map<String, dynamic> json) => DistrictSummary(
+        district: json['district'] as String,
+        state: json['state'] as String,
+        facilityCount: json['facility_count'] as int,
+        recentCaseCount: json['recent_case_count'] as int,
+      );
+}

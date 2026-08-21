@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'models/nav_destination.dart';
 import 'models/session.dart';
 import 'screens/admin_applications_screen.dart';
+import 'screens/alerts_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/disease_trends_screen.dart';
+import 'screens/geographic_clusters_screen.dart';
 import 'screens/health_authority_dashboard_screen.dart';
 import 'screens/lab_dashboard_screen.dart';
 import 'screens/lab_worklist_screen.dart';
+import 'screens/national_statistics_screen.dart';
 import 'screens/patient_records_screen.dart';
 import 'screens/shell_screen.dart';
 import 'screens/submit_isolate_screen.dart';
@@ -85,14 +89,38 @@ ShellScreen _labWorkspace(String userName) => ShellScreen(
 
 ShellScreen _healthAuthorityWorkspace(String userName) => ShellScreen(
       roleLabel: 'HEALTH AUTHORITY',
-      roleCaption: 'Surveillance',
+      roleCaption: 'Surveillance Officer',
       userName: userName,
       destinations: [
         NavDestination(
-          key: 'surveillance-dashboard',
-          label: 'Surveillance',
-          icon: Icons.map_outlined,
+          key: 'live-surveillance',
+          label: 'Live Surveillance',
+          icon: Icons.podcasts_outlined,
           builder: (_) => HealthAuthorityDashboardScreen(userName: userName),
+        ),
+        NavDestination(
+          key: 'disease-trends',
+          label: 'Disease Trends',
+          icon: Icons.show_chart,
+          builder: (_) => const DiseaseTrendsScreen(),
+        ),
+        NavDestination(
+          key: 'geographic-clusters',
+          label: 'Geographic Clusters',
+          icon: Icons.map_outlined,
+          builder: (_) => const GeographicClustersScreen(),
+        ),
+        NavDestination(
+          key: 'amr-watch',
+          label: 'National Statistics',
+          icon: Icons.bar_chart_outlined,
+          builder: (_) => const NationalStatisticsScreen(),
+        ),
+        NavDestination(
+          key: 'alerts',
+          label: 'Alerts',
+          icon: Icons.warning_amber_outlined,
+          builder: (_) => const AlertsScreen(),
         ),
       ],
     );

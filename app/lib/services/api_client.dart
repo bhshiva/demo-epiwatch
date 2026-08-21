@@ -188,6 +188,16 @@ class ApiClient {
 
   // --- Surveillance (Health Authority) ---
 
+  Future<SurveillanceSummary> getSurveillanceSummary() async {
+    final res = await get('/surveillance/summary');
+    return SurveillanceSummary.fromJson(res);
+  }
+
+  Future<List<DistrictSummary>> getDistrictSummaries() async {
+    final res = await getList('/surveillance/districts');
+    return res.map((e) => DistrictSummary.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   Future<List<DiseaseDailyPoint>> getDiseaseDaily({String? diagnosis, int days = 30}) async {
     final res = await getList('/surveillance/disease-daily', query: {
       if (diagnosis != null) 'diagnosis': diagnosis,

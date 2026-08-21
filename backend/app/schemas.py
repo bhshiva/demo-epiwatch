@@ -361,6 +361,18 @@ class FacilityGeo(BaseModel):
     longitude: float | None
     recent_case_count: int
 
+
+class SurveillanceSummary(BaseModel):
+    facilities_reporting: int
+    reports_today: int
+
+
+class DistrictSummary(BaseModel):
+    district: str
+    state: str
+    facility_count: int
+    recent_case_count: int
+
     class Config:
         from_attributes = True
 
