@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'models/nav_destination.dart';
 import 'models/session.dart';
+import 'screens/admin_applications_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/health_authority_dashboard_screen.dart';
 import 'screens/lab_dashboard_screen.dart';
 import 'screens/lab_worklist_screen.dart';
 import 'screens/patient_records_screen.dart';
@@ -13,11 +15,12 @@ import 'screens/submit_report_screen.dart';
 ///
 /// The server enforces the same boundary on every request; this only decides
 /// what a role is offered. An unrecognised role falls back to the doctor
-/// workspace, which is the least-privileged of the two.
+/// workspace, which is the least-privileged of the roles.
 ShellScreen workspaceFor(Session session) {
-  return session.isLab
-      ? _labWorkspace(session.name)
-      : _doctorWorkspace(session.name);
+  if (session.isHealthAuthority) return _healthAuthorityWorkspace(session.name);
+  if (session.isAdmin) return _adminWorkspace(session.name);
+  if (session.isLab) return _labWorkspace(session.name);
+  return _doctorWorkspace(session.name);
 }
 
 ShellScreen _doctorWorkspace(String userName) => ShellScreen(
@@ -76,6 +79,34 @@ ShellScreen _labWorkspace(String userName) => ShellScreen(
           label: 'Culture & AST',
           icon: Icons.science_outlined,
           builder: (_) => const SubmitIsolateScreen(),
+        ),
+      ],
+    );
+
+ShellScreen _healthAuthorityWorkspace(String userName) => ShellScreen(
+      roleLabel: 'HEALTH AUTHORITY',
+      roleCaption: 'Surveillance',
+      userName: userName,
+      destinations: [
+        NavDestination(
+          key: 'surveillance-dashboard',
+          label: 'Surveillance',
+          icon: Icons.map_outlined,
+          builder: (_) => HealthAuthorityDashboardScreen(userName: userName),
+        ),
+      ],
+    );
+
+ShellScreen _adminWorkspace(String userName) => ShellScreen(
+      roleLabel: 'ADMIN',
+      roleCaption: 'Facility Onboarding',
+      userName: userName,
+      destinations: [
+        NavDestination(
+          key: 'applications',
+          label: 'Applications',
+          icon: Icons.fact_check_outlined,
+          builder: (_) => AdminApplicationsScreen(userName: userName),
         ),
       ],
     );

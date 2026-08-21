@@ -155,7 +155,7 @@ class _Sidebar extends StatelessWidget {
                                 fontWeight: FontWeight.w700)),
                       ),
                       const SizedBox(width: 8),
-                      _RoleBadge(label: roleLabel),
+                      Flexible(child: _RoleBadge(label: roleLabel)),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -198,6 +198,8 @@ class _RoleBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(label,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
             style: const TextStyle(
                 color: Color(0xFF06301F),
                 fontSize: 10,

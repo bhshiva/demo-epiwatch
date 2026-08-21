@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../models/application_models.dart';
 import '../models/dashboard_models.dart';
 import '../models/lab_models.dart';
 import '../models/patient_models.dart';
 import '../models/report_models.dart';
 import '../models/session.dart';
+import '../models/surveillance_models.dart';
 import 'api_exceptions.dart';
 
 class ApiClient {
@@ -47,6 +49,14 @@ class ApiClient {
         ));
     return Session.fromJson(res);
   }
+
+  /// Clears must_change_password server-side. The only way to move off a
+  /// generated one-time password (see routers/applications.py) -- there's
+  /// no email/reset-link flow.
+  Future<void> changePassword(String currentPassword, String newPassword) => post(
+        '/auth/change-password',
+        {'current_password': currentPassword, 'new_password': newPassword},
+      );
 
   Future<DashboardSummary> getDashboardSummary() async {
     final res = await get('/dashboard/summary');
@@ -174,5 +184,53 @@ class ApiClient {
   Future<Isolate> amendIsolate(String isolateId, IsolateCreateRequest request) async {
     final res = await patch('/lab/isolates/$isolateId', request.toJson());
     return Isolate.fromJson(res);
+  }
+
+  // --- Surveillance (Health Authority) ---
+
+  Future<List<DiseaseDailyPoint>> getDiseaseDaily({String? diagnosis, int days = 30}) async {
+    final res = await getList('/surveillance/disease-daily', query: {
+      if (diagnosis != null) 'diagnosis': diagnosis,
+      'days': days,
+    });
+    return res.map((e) => DiseaseDailyPoint.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<SurveillanceMetric>> getSurveillanceMetrics(String metricName, {String? facilityId}) async {
+    final res = await getList('/surveillance/metrics', query: {
+      'metric_name': metricName,
+      if (facilityId != null) 'facility_id': facilityId,
+    });
+    return res.map((e) => SurveillanceMetric.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<FacilityGeo>> getFacilitiesGeo() async {
+    final res = await getList('/surveillance/facilities-geo');
+    return res.map((e) => FacilityGeo.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // --- Facility onboarding (Admin) ---
+
+  /// Public: no account exists for the applicant yet.
+  Future<FacilityApplication> submitApplication(FacilityApplicationRequest request) async {
+    final res = await post('/applications', request.toJson());
+    return FacilityApplication.fromJson(res);
+  }
+
+  Future<List<FacilityApplication>> getApplications({String? status}) async {
+    final res = await getList('/admin/applications', query: {
+      if (status != null) 'status_filter': status,
+    });
+    return res.map((e) => FacilityApplication.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<ApplicationApproveResult> approveApplication(String applicationId) async {
+    final res = await post('/admin/applications/$applicationId/approve', null);
+    return ApplicationApproveResult.fromJson(res);
+  }
+
+  Future<FacilityApplication> rejectApplication(String applicationId, String reason) async {
+    final res = await post('/admin/applications/$applicationId/reject', {'reason': reason});
+    return FacilityApplication.fromJson(res);
   }
 }

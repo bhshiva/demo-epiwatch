@@ -8,7 +8,11 @@ class Session {
   final String role;
   final String doctorId;
   final String name;
-  final String facilityId;
+  // Null for health_authority/admin accounts, which aren't tied to one
+  // facility (health authority sees every facility; admin approves
+  // accounts before any facility-scoped work exists for them).
+  final String? facilityId;
+  final bool mustChangePassword;
 
   const Session({
     required this.accessToken,
@@ -16,15 +20,19 @@ class Session {
     required this.doctorId,
     required this.name,
     required this.facilityId,
+    this.mustChangePassword = false,
   });
 
   bool get isLab => role == 'lab';
+  bool get isHealthAuthority => role == 'health_authority';
+  bool get isAdmin => role == 'admin';
 
   factory Session.fromJson(Map<String, dynamic> json) => Session(
         accessToken: json['access_token'] as String,
         role: json['role'] as String? ?? 'doctor',
         doctorId: json['doctor_id'] as String,
         name: json['name'] as String,
-        facilityId: json['facility_id'] as String,
+        facilityId: json['facility_id'] as String?,
+        mustChangePassword: json['must_change_password'] as bool? ?? false,
       );
 }

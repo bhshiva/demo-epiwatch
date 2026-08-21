@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'models/session.dart';
+import 'screens/change_password_screen.dart';
 import 'screens/login_screen.dart';
 import 'state/auth.dart';
 import 'theme/app_theme.dart';
@@ -20,7 +22,14 @@ class EpiWatchApp extends ConsumerWidget {
       title: 'EpiWatch',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(),
-      home: session == null ? const LoginScreen() : workspaceFor(session),
+      home: switch (session) {
+        null => const LoginScreen(),
+        // An admin-provisioned account starts on a generated one-time
+        // password (see routers/applications.py) and can't reach the rest
+        // of the app until it sets its own.
+        Session(mustChangePassword: true) => const ChangePasswordScreen(),
+        _ => workspaceFor(session),
+      },
     );
   }
 }

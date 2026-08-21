@@ -9,9 +9,28 @@ Session _session(String role) => Session(
       accessToken: 'tok',
       role: role,
       doctorId: 'd1',
-      name: role == 'lab' ? 'Priya Nair' : 'Dr. Asha Rao',
-      facilityId: 'f1',
+      name: switch (role) {
+        'lab' => 'Priya Nair',
+        'health_authority' => 'Dr. Meera Iyer',
+        'admin' => 'Ravi Kulkarni',
+        _ => 'Dr. Asha Rao',
+      },
+      // health_authority/admin aren't tied to one facility.
+      facilityId: (role == 'health_authority' || role == 'admin') ? null : 'f1',
     );
+
+/// Every destination label across all four roles, so a test can assert that
+/// a given role's screen shows ONLY its own labels -- the reported WPF bug
+/// was a lab user seeing the clinician workspace, and this project now has
+/// four roles to keep mutually exclusive, not two.
+const _allRoleLabels = [
+  'Patient Records',
+  'Submit Report',
+  'Worklist',
+  'Culture & AST',
+  'Surveillance',
+  'Applications',
+];
 
 Future<void> _pumpWorkspace(WidgetTester tester, Session session,
     {Size size = const Size(1400, 900)}) async {
@@ -40,8 +59,12 @@ void main() {
       expect(find.text('Culture & AST'), findsOneWidget);
 
       // The reported WPF bug: a lab user seeing the clinician workspace.
-      expect(find.text('Patient Records'), findsNothing);
-      expect(find.text('Submit Report'), findsNothing);
+      // Now four roles, so check every other role's labels, not just
+      // doctor's.
+      for (final label in _allRoleLabels) {
+        if (label == 'Worklist' || label == 'Culture & AST') continue;
+        expect(find.text(label), findsNothing, reason: '$label leaked into the lab workspace');
+      }
     });
 
     testWidgets('a doctor gets the clinician destinations', (tester) async {
@@ -50,7 +73,37 @@ void main() {
       expect(find.text('DOCTOR'), findsOneWidget);
       expect(find.text('Clinician: Dr. Asha Rao'), findsOneWidget);
       expect(find.text('Patient Records'), findsOneWidget);
-      expect(find.text('Worklist'), findsNothing);
+      for (final label in _allRoleLabels) {
+        if (label == 'Patient Records' || label == 'Submit Report') continue;
+        expect(find.text(label), findsNothing, reason: '$label leaked into the doctor workspace');
+      }
+    });
+
+    testWidgets('a health authority user gets a read-only surveillance destination and badge',
+        (tester) async {
+      await _pumpWorkspace(tester, _session('health_authority'));
+
+      expect(find.text('HEALTH AUTHORITY'), findsOneWidget);
+      expect(find.text('Surveillance: Dr. Meera Iyer'), findsOneWidget);
+      expect(find.text('Surveillance'), findsWidgets);
+      for (final label in _allRoleLabels) {
+        if (label == 'Surveillance') continue;
+        expect(find.text(label), findsNothing,
+            reason: '$label leaked into the health authority workspace');
+      }
+    });
+
+    testWidgets('an admin user gets the applications destination and badge',
+        (tester) async {
+      await _pumpWorkspace(tester, _session('admin'));
+
+      expect(find.text('ADMIN'), findsOneWidget);
+      expect(find.text('Facility Onboarding: Ravi Kulkarni'), findsOneWidget);
+      expect(find.text('Applications'), findsWidgets);
+      for (final label in _allRoleLabels) {
+        if (label == 'Applications') continue;
+        expect(find.text(label), findsNothing, reason: '$label leaked into the admin workspace');
+      }
     });
 
     testWidgets('an unrecognised role falls back to the doctor workspace',

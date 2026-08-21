@@ -16,6 +16,13 @@ class AuthState {
   const AuthState({this.session, this.isBusy = false, this.error});
 
   bool get isSignedIn => session != null;
+
+  AuthState copyWith({Session? session, bool? isBusy, String? error, bool clearError = false}) =>
+      AuthState(
+        session: session ?? this.session,
+        isBusy: isBusy ?? this.isBusy,
+        error: clearError ? null : (error ?? this.error),
+      );
 }
 
 class AuthNotifier extends Notifier<AuthState> {
@@ -48,4 +55,29 @@ class AuthNotifier extends Notifier<AuthState> {
     ref.read(apiClientProvider).setToken(null);
     state = const AuthState();
   }
+
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    final session = state.session;
+    if (session == null) return;
+
+    state = state.copyWith(isBusy: true, clearError: true);
+    final api = ref.read(apiClientProvider);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      state = AuthState(session: _withPasswordChanged(session));
+    } on ApiException catch (e) {
+      state = state.copyWith(isBusy: false, error: e.message);
+    } on NetworkException catch (e) {
+      state = state.copyWith(isBusy: false, error: e.message);
+    }
+  }
+
+  Session _withPasswordChanged(Session session) => Session(
+        accessToken: session.accessToken,
+        role: session.role,
+        doctorId: session.doctorId,
+        name: session.name,
+        facilityId: session.facilityId,
+        mustChangePassword: false,
+      );
 }

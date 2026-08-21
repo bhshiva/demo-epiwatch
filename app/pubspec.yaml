@@ -43,6 +43,10 @@ dependencies:
   intl: ^0.20.3
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
+  # OpenStreetMap tiles -- no API key/billing setup needed, unlike
+  # google_maps_flutter. Used by the Health Authority outbreak map.
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:

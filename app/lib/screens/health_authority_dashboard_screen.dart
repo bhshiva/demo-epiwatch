@@ -1,0 +1,278 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
+import '../models/surveillance_models.dart';
+import '../state/surveillance_dashboard.dart';
+import '../theme/app_colors.dart';
+import '../widgets/section_card.dart';
+
+/// Read-only, all-facility view: case trends, resistance rates, an outbreak
+/// map, and a simple case-count watch list. No risk scoring/alerting here --
+/// that's the deliberately-deferred ML layer (see ML_PLAN.md, kept local,
+/// not committed). This is descriptive, not predictive.
+class HealthAuthorityDashboardScreen extends ConsumerStatefulWidget {
+  final String userName;
+  const HealthAuthorityDashboardScreen({super.key, required this.userName});
+
+  @override
+  ConsumerState<HealthAuthorityDashboardScreen> createState() =>
+      _HealthAuthorityDashboardScreenState();
+}
+
+class _HealthAuthorityDashboardScreenState
+    extends ConsumerState<HealthAuthorityDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => ref.read(surveillanceDashboardProvider.notifier).load());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(surveillanceDashboardProvider);
+    final isWide = MediaQuery.sizeOf(context).width >= 1100;
+
+    return RefreshIndicator(
+      onRefresh: () => ref.read(surveillanceDashboardProvider.notifier).load(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(28),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1180),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (state.error != null) ...[
+                _ErrorBanner(message: state.error!),
+                const SizedBox(height: 18),
+              ],
+              const Text('Statewide Surveillance',
+                  style: TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 6),
+              MutedText('Logged-in: ${widget.userName}'),
+              const SizedBox(height: 22),
+              if (isWide)
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(flex: 3, child: _OutbreakMap(facilities: state.facilities)),
+                      const SizedBox(width: 18),
+                      Expanded(flex: 2, child: _WatchList(facilities: state.watchList)),
+                    ],
+                  ),
+                )
+              else
+                Column(
+                  children: [
+                    _OutbreakMap(facilities: state.facilities),
+                    const SizedBox(height: 18),
+                    _WatchList(facilities: state.watchList),
+                  ],
+                ),
+              const SizedBox(height: 18),
+              _DiseaseDailyChart(data: state.diseaseDaily),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.statusCritical.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.statusCritical.withValues(alpha: 0.35)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.error_outline, color: AppColors.statusCritical, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Text(message,
+                  style: const TextStyle(color: AppColors.statusCritical, fontSize: 13))),
+        ]),
+      );
+}
+
+class _OutbreakMap extends StatelessWidget {
+  final List<FacilityGeo> facilities;
+  const _OutbreakMap({required this.facilities});
+
+  @override
+  Widget build(BuildContext context) {
+    final located = facilities.where((f) => f.latitude != null && f.longitude != null).toList();
+    // India's approximate centroid, so the map has somewhere sensible to
+    // point before any facility data has loaded.
+    const fallbackCenter = LatLng(22.9734, 78.6569);
+
+    return SectionCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: SectionTitle('Facility Case Counts (7d)'),
+          ),
+          SizedBox(
+            height: 360,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: located.isNotEmpty
+                      ? LatLng(located.first.latitude!, located.first.longitude!)
+                      : fallbackCenter,
+                  initialZoom: located.isNotEmpty ? 5.5 : 4.2,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.epiwatch.app',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      for (final f in located)
+                        Marker(
+                          point: LatLng(f.latitude!, f.longitude!),
+                          width: 36,
+                          height: 36,
+                          child: Tooltip(
+                            message: '${f.name}\n${f.recentCaseCount} cases (7d)',
+                            child: Icon(
+                              Icons.location_on,
+                              size: 32,
+                              color: f.recentCaseCount > 0
+                                  ? AppColors.statusCritical
+                                  : AppColors.accentBlue,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WatchList extends StatelessWidget {
+  final List<FacilityGeo> facilities;
+  const _WatchList({required this.facilities});
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionTitle('Highest Case Counts (7d)'),
+            const SizedBox(height: 4),
+            const MutedText('A sort, not an alert -- risk scoring is not built yet.'),
+            const SizedBox(height: 14),
+            if (facilities.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 18),
+                child: MutedText('No recent cases recorded.'),
+              )
+            else
+              for (final f in facilities)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(f.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                      ),
+                      Text('${f.recentCaseCount}',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.statusCritical)),
+                    ],
+                  ),
+                ),
+          ],
+        ),
+      );
+}
+
+class _DiseaseDailyChart extends StatelessWidget {
+  final List<DiseaseDailyPoint> data;
+  const _DiseaseDailyChart({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    // Group by diagnosis so multiple conditions don't collapse into one
+    // ambiguous total.
+    final byDiagnosis = <String, int>{};
+    for (final point in data) {
+      byDiagnosis[point.diagnosis] = (byDiagnosis[point.diagnosis] ?? 0) + point.caseCount;
+    }
+    final entries = byDiagnosis.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionTitle('Statewide Cases by Diagnosis (30d)'),
+          const SizedBox(height: 14),
+          if (entries.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 26),
+              child: Center(child: MutedText('No cases recorded in this window.')),
+            )
+          else
+            for (final entry in entries.take(10))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 180,
+                      child: Text(entry.key,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                    ),
+                    Expanded(
+                      child: LayoutBuilder(builder: (context, constraints) {
+                        final maxValue = entries.first.value;
+                        final width =
+                            maxValue == 0 ? 0.0 : constraints.maxWidth * entry.value / maxValue;
+                        return Container(
+                          height: 14,
+                          width: width,
+                          decoration: BoxDecoration(
+                            color: AppColors.chartBlue,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('${entry.value}',
+                        style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
+                  ],
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+}
