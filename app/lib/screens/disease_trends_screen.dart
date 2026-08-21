@@ -112,6 +112,7 @@ class _DiagnosisFilter extends StatelessWidget {
       width: 260,
       child: DropdownButtonFormField<String?>(
         initialValue: selected,
+        isExpanded: true,
         decoration: InputDecoration(
           isDense: true,
           prefixIcon: const Icon(Icons.filter_alt_outlined, size: 18),
@@ -119,8 +120,12 @@ class _DiagnosisFilter extends StatelessWidget {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         ),
         items: [
-          const DropdownMenuItem(value: null, child: Text('All Diagnoses')),
-          for (final d in diagnoses) DropdownMenuItem(value: d, child: Text(d)),
+          const DropdownMenuItem(
+            value: null,
+            child: Text('All Diagnoses', overflow: TextOverflow.ellipsis),
+          ),
+          for (final d in diagnoses)
+            DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)),
         ],
         onChanged: onChanged,
       ),
