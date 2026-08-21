@@ -125,6 +125,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // The worklist table scrolls horizontally and is wider than the test
+    // viewport, so the "Finish" cell starts off-screen.
+    await tester.ensureVisible(find.text('Finish'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Finish'));
     await tester.pumpAndSettle();
 
