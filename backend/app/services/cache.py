@@ -8,8 +8,11 @@ Redis outage must degrade to "hit Postgres directly", never to an error --
 this is an optimization, not a dependency the API can fail on.
 """
 
+import decimal
 import json
 import os
+import uuid
+from datetime import date, datetime
 
 import redis
 
@@ -42,13 +45,33 @@ def get_json(key: str):
     return json.loads(raw) if raw is not None else None
 
 
+def _json_default(obj):
+    """Handles the types raw SQL rows commonly come back as (date/UUID/Decimal)
+    that json.dumps doesn't know natively."""
+    if isinstance(obj, (date, datetime)):
+        return obj.isoformat()
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
 def set_json(key: str, value, ttl: int = DEFAULT_TTL_SECONDS) -> None:
-    """Best-effort write. A caching failure must never fail the request it's caching for."""
+    """
+    Best-effort write. A caching failure -- Redis being down, or a value
+    this encoder still can't serialize -- must never fail the request it's
+    caching for, only skip the cache for this call.
+    """
     client = _get_client()
     if client is None:
         return
     try:
-        client.set(key, json.dumps(value), ex=ttl)
+        payload = json.dumps(value, default=_json_default)
+    except TypeError:
+        return
+    try:
+        client.set(key, payload, ex=ttl)
     except redis.RedisError:
         _mark_unavailable()
 

@@ -12,6 +12,7 @@ from app.routers import (
     patients as patients_router,
     lab as lab_router,
     applications as applications_router,
+    surveillance as surveillance_router,
 )
 
 app.include_router(auth_router.router)
@@ -20,6 +21,7 @@ app.include_router(dashboard_router.router)
 app.include_router(patients_router.router)
 app.include_router(lab_router.router)
 app.include_router(applications_router.router)
+app.include_router(surveillance_router.router)
 
 @app.get("/health")
 def health():

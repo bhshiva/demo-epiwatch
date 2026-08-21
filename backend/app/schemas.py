@@ -333,6 +333,38 @@ class FacilityApplicationOut(BaseModel):
         from_attributes = True
 
 
+# --- Surveillance (Health Authority) ---
+
+
+class DiseaseDailyPoint(BaseModel):
+    report_date: date
+    diagnosis: str
+    case_count: int
+
+
+class SurveillanceMetricOut(BaseModel):
+    facility_id: uuid.UUID | None
+    pathogen: str | None
+    antibiotic: str | None
+    window_start: date
+    window_end: date
+    value: float
+    sample_size: int
+
+
+class FacilityGeo(BaseModel):
+    facility_id: uuid.UUID
+    name: str
+    district: str
+    state: str
+    latitude: float | None
+    longitude: float | None
+    recent_case_count: int
+
+    class Config:
+        from_attributes = True
+
+
 class ApplicationRejectRequest(BaseModel):
     reason: str
 

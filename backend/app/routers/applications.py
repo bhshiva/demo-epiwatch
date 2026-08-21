@@ -140,7 +140,7 @@ def approve_application(
     db.refresh(application)
 
     return ApplicationApproveResponse(
-        application=application,
+        application=FacilityApplicationOut.model_validate(application),
         facility_id=facility.facility_id,
         doctor_id=doctor.doctor_id,
         email=doctor.email,
