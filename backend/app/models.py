@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, date
-from sqlalchemy import String, ForeignKey, TIMESTAMP, Date, Text, Integer, Numeric, UniqueConstraint, Boolean
+from sqlalchemy import String, ForeignKey, TIMESTAMP, Date, Text, Integer, Numeric, UniqueConstraint, Boolean, LargeBinary
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
@@ -67,10 +67,18 @@ class PatientIdentity(Base):
     identity_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("master.patients.patient_id"))
     facility_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("master.facilities.facility_id"))
-    full_name: Mapped[str] = mapped_column(String)
-    date_of_birth: Mapped[date | None] = mapped_column(Date)
-    contact_number: Mapped[str | None] = mapped_column(String)
-    facility_mrn: Mapped[str | None] = mapped_column(String)
+    # Encrypted at rest (pgcrypto pgp_sym_encrypt/decrypt, see
+    # services/crypto.py) -- stored as ciphertext bytes, never plaintext in
+    # the database. Read/written only through encrypt_field/decrypt_field.
+    full_name: Mapped[bytes] = mapped_column(LargeBinary)
+    date_of_birth: Mapped[bytes | None] = mapped_column(LargeBinary)
+    contact_number: Mapped[bytes | None] = mapped_column(LargeBinary)
+    facility_mrn: Mapped[bytes | None] = mapped_column(LargeBinary)
+    # Deterministic HMAC blind index for facility_mrn (pgp_sym_encrypt is
+    # non-deterministic, so the ciphertext column itself can't back a
+    # uniqueness constraint or an equality lookup -- see crypto.py:hash_field
+    # and migration 013's comment).
+    facility_mrn_hash: Mapped[str | None] = mapped_column(String)
     abha_id: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
@@ -85,12 +93,15 @@ class PatientReport(Base):
     doctor_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("master.doctors.doctor_id"))
     facility_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("master.facilities.facility_id"))
     report_date: Mapped[date] = mapped_column(Date)
-    complaints: Mapped[str | None] = mapped_column(Text)
-    medical_history: Mapped[str | None] = mapped_column(Text)
+    # Encrypted at rest -- see PatientIdentity's fields above and
+    # services/crypto.py. Clinical free text can carry identifying detail a
+    # doctor typed in, unlike the coded fields below.
+    complaints: Mapped[bytes | None] = mapped_column(LargeBinary)
+    medical_history: Mapped[bytes | None] = mapped_column(LargeBinary)
     symptoms: Mapped[dict | None] = mapped_column(JSONB)
     diagnosis: Mapped[str | None] = mapped_column(String)
     diagnosis_status: Mapped[str | None] = mapped_column(String)
-    treatment: Mapped[str | None] = mapped_column(Text)
+    treatment: Mapped[bytes | None] = mapped_column(LargeBinary)
     infection_syndrome: Mapped[str | None] = mapped_column(String)
     infection_syndrome_other: Mapped[str | None] = mapped_column(String)
     infection_origin: Mapped[str | None] = mapped_column(String)

@@ -18,6 +18,8 @@ from datetime import date
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.services.crypto import PGCRYPTO_KEY, hash_field
+
 # Score at or above which two records almost certainly describe one person.
 AUTO_THRESHOLD = 0.92
 # Score at or above which the clinician must look before creating a new record.
@@ -174,21 +176,29 @@ def score_candidate(
     return round(score, 4), matched_on
 
 
+#  full_name/date_of_birth/contact_number/facility_mrn are stored encrypted
+# (pgp_sym_encrypt -- see services/crypto.py); every reference below decrypts
+# inline with the key bound as a parameter, never interpolated. This means
+# the trigram GIN index that used to accelerate the name-similarity search
+# can no longer be used (an index can't accelerate a query against
+# ciphertext), so this candidate search is a full scan within
+# WHERE facility_id = :facility_id -- accepted at this project's scale (one
+# clinic's patient volume per query), documented in migration 013.
 _CANDIDATE_SQL = text(
     """
     SELECT
         pi.patient_id,
-        pi.full_name,
-        pi.date_of_birth,
-        pi.contact_number,
-        pi.facility_mrn,
+        pgp_sym_decrypt(pi.full_name, :key) AS full_name,
+        pgp_sym_decrypt(pi.date_of_birth, :key)::date AS date_of_birth,
+        pgp_sym_decrypt(pi.contact_number, :key) AS contact_number,
+        pgp_sym_decrypt(pi.facility_mrn, :key) AS facility_mrn,
         pi.abha_id,
         p.exact_age,
         p.age_group,
         p.sex,
         p.district,
-        similarity(lower(pi.full_name), lower(:name)) AS name_similarity,
-        dmetaphone(pi.full_name) = dmetaphone(:name) AS phonetic_match,
+        similarity(lower(pgp_sym_decrypt(pi.full_name, :key)), lower(:name)) AS name_similarity,
+        dmetaphone(pgp_sym_decrypt(pi.full_name, :key)) = dmetaphone(:name) AS phonetic_match,
         COALESCE(rs.report_count, 0) AS report_count,
         rs.last_visit
     FROM master.patient_identities pi
@@ -202,18 +212,24 @@ _CANDIDATE_SQL = text(
     ) rs ON rs.patient_id = pi.patient_id
     WHERE pi.facility_id = :facility_id
       AND (
-            similarity(lower(pi.full_name), lower(:name)) > :floor
-         OR dmetaphone(pi.full_name) = dmetaphone(:name)
+            similarity(lower(pgp_sym_decrypt(pi.full_name, :key)), lower(:name)) > :floor
+         OR dmetaphone(pgp_sym_decrypt(pi.full_name, :key)) = dmetaphone(:name)
       )
-    ORDER BY similarity(lower(pi.full_name), lower(:name)) DESC
+    ORDER BY similarity(lower(pgp_sym_decrypt(pi.full_name, :key)), lower(:name)) DESC
     LIMIT :limit
     """
 )
 
+# MRN equality moves to the deterministic HMAC blind index
+# (facility_mrn_hash) rather than decrypting -- pgp_sym_encrypt is
+# non-deterministic so ciphertext-to-ciphertext equality would never match,
+# and decrypt-then-compare would work but the hash is the indexed, O(1)
+# path this exact-match tier is supposed to be.
 _EXACT_SQL = text(
     """
     SELECT
-        pi.patient_id, pi.full_name, pi.facility_mrn, pi.abha_id,
+        pi.patient_id, pgp_sym_decrypt(pi.full_name, :key) AS full_name,
+        pgp_sym_decrypt(pi.facility_mrn, :key) AS facility_mrn, pi.abha_id,
         p.exact_age, p.age_group, p.sex, p.district,
         COALESCE(rs.report_count, 0) AS report_count, rs.last_visit
     FROM master.patient_identities pi
@@ -225,8 +241,7 @@ _EXACT_SQL = text(
     WHERE pi.facility_id = :facility_id
       AND (
             (CAST(:abha_id AS text) IS NOT NULL AND pi.abha_id = CAST(:abha_id AS text))
-         OR (CAST(:mrn AS text) IS NOT NULL
-             AND lower(trim(pi.facility_mrn)) = lower(trim(CAST(:mrn AS text))))
+         OR (CAST(:mrn_hash AS text) IS NOT NULL AND pi.facility_mrn_hash = CAST(:mrn_hash AS text))
       )
     LIMIT 5
     """
@@ -244,12 +259,13 @@ def find_candidates(
     """
     abha = normalise_digits(criteria.abha_id)
     mrn = criteria.facility_mrn.strip() if criteria.facility_mrn else None
+    mrn_hash = hash_field(mrn.lower()) if mrn else None
 
     # Tier 1 -- a strong identifier is conclusive; do not dilute it with scoring.
     if abha or mrn:
         rows = db.execute(
             _EXACT_SQL,
-            {"facility_id": str(facility_id), "abha_id": abha, "mrn": mrn},
+            {"facility_id": str(facility_id), "abha_id": abha, "mrn_hash": mrn_hash, "key": PGCRYPTO_KEY},
         ).mappings().all()
         if rows:
             return [
@@ -282,6 +298,7 @@ def find_candidates(
             "name": criteria.full_name.strip(),
             "floor": CANDIDATE_SIMILARITY_FLOOR,
             "limit": CANDIDATE_LIMIT,
+            "key": PGCRYPTO_KEY,
         },
     ).mappings().all()
 

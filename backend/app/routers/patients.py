@@ -15,6 +15,7 @@ from app.schemas import (
     PatientMatchRequest,
     PatientSearchResult,
 )
+from app.services.crypto import PGCRYPTO_KEY, decrypt_date, decrypt_field
 from app.services.patient_matching import MatchCriteria, find_candidates
 from app.services.abha import (
     AbdmClient,
@@ -41,8 +42,18 @@ def search_patients(
 
     Facility scoping comes from the authenticated doctor, never from the
     request, so one facility cannot enumerate another's patients.
+
+    full_name/facility_mrn/contact_number are encrypted at rest, so the
+    fragment match below decrypts inline (pgp_sym_decrypt, key bound as a
+    parameter, never interpolated) rather than matching ciphertext directly.
+    Same tradeoff as patient_matching.py's candidate search: no index can
+    accelerate a query against ciphertext, so this is a full scan bounded by
+    WHERE facility_id = :facility_id, accepted at this project's scale.
     """
     term = f"%{q.strip().lower()}%"
+    decrypted_name = func.pgp_sym_decrypt(PatientIdentity.full_name, PGCRYPTO_KEY)
+    decrypted_mrn = func.pgp_sym_decrypt(PatientIdentity.facility_mrn, PGCRYPTO_KEY)
+    decrypted_contact = func.pgp_sym_decrypt(PatientIdentity.contact_number, PGCRYPTO_KEY)
 
     report_stats = (
         select(
@@ -60,19 +71,17 @@ def search_patients(
         .outerjoin(report_stats, report_stats.c.patient_id == PatientIdentity.patient_id)
         .filter(PatientIdentity.facility_id == doctor.facility_id)
         .filter(
-            func.lower(PatientIdentity.full_name).like(term)
-            | func.lower(func.coalesce(PatientIdentity.facility_mrn, "")).like(term)
+            func.lower(decrypted_name).like(term)
+            | func.lower(func.coalesce(decrypted_mrn, "")).like(term)
             | func.coalesce(PatientIdentity.abha_id, "").like(term)
             # A clinician holding the phone number should not have to guess
             # the spelling of the name.
             | func.right(
-                func.regexp_replace(
-                    func.coalesce(PatientIdentity.contact_number, ""), r"\D", "", "g"
-                ),
+                func.regexp_replace(func.coalesce(decrypted_contact, ""), r"\D", "", "g"),
                 10,
             ).like(term)
         )
-        .order_by(PatientIdentity.full_name)
+        .order_by(decrypted_name)
         .limit(20)
         .all()
     )
@@ -80,12 +89,12 @@ def search_patients(
     return [
         PatientSearchResult(
             patient_id=identity.patient_id,
-            full_name=identity.full_name,
-            exact_age=_current_age(patient, identity),
+            full_name=decrypt_field(db, identity.full_name),
+            exact_age=_current_age(patient, decrypt_date(db, identity.date_of_birth)),
             age_group=patient.age_group,
             sex=patient.sex,
             district=patient.district,
-            facility_mrn=identity.facility_mrn,
+            facility_mrn=decrypt_field(db, identity.facility_mrn),
             abha_id=identity.abha_id,
             report_count=count or 0,
             last_visit=last_visit,
@@ -209,7 +218,7 @@ def patient_history(
             report_date=report.report_date,
             diagnosis=report.diagnosis,
             diagnosis_status=report.diagnosis_status,
-            complaints=report.complaints,
+            complaints=decrypt_field(db, report.complaints),
             pathogen=lab.pathogen if lab else None,
             culture_result=lab.culture_result if lab else None,
             ast_result=lab.ast_result if lab else None,
@@ -218,13 +227,16 @@ def patient_history(
     ]
 
 
-def _current_age(patient: Patient, identity: PatientIdentity) -> int | None:
+def _current_age(patient: Patient, dob: date | None) -> int | None:
     """
     Prefer age derived from date of birth so it stays correct on return
     visits; fall back to the age recorded at registration.
+
+    Takes an already-decrypted date rather than the PatientIdentity row
+    directly -- date_of_birth is encrypted at rest, and this stays a plain
+    date-arithmetic function rather than also owning the decrypt call.
     """
-    if identity.date_of_birth is not None:
+    if dob is not None:
         today = date.today()
-        dob = identity.date_of_birth
         return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
     return patient.exact_age

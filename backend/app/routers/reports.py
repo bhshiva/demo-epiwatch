@@ -15,6 +15,7 @@ from app.models import (
 )
 from app.services.antibiotics import ANTIBIOTIC_CLASS
 from app.schemas import PatientMatchCandidate, ReportCreateRequest, ReportResponse
+from app.services.crypto import decrypt_field, encrypt_date, encrypt_field, hash_field
 from app.services.patient_matching import (
     MatchCriteria,
     blocking_candidates,
@@ -43,12 +44,12 @@ def create_report(
         doctor_id=doctor.doctor_id,
         facility_id=doctor.facility_id,
         report_date=body.report_date,
-        complaints=body.complaints,
-        medical_history=body.medical_history,
+        complaints=encrypt_field(db, body.complaints),
+        medical_history=encrypt_field(db, body.medical_history),
         symptoms={"items": body.symptoms},
         diagnosis=body.diagnosis,
         diagnosis_status=body.diagnosis_status,
-        treatment=body.treatment,
+        treatment=encrypt_field(db, body.treatment),
         infection_syndrome=body.infection_syndrome,
         infection_syndrome_other=body.infection_syndrome_other,
         infection_origin=body.infection_origin,
@@ -110,7 +111,7 @@ def create_report(
 
     db.commit()
     db.refresh(report)
-    return report
+    return _decorate_report(db, report)
 
 
 @router.get("", response_model=list[ReportResponse])
@@ -124,7 +125,21 @@ def list_reports(
         .order_by(PatientReport.created_at.desc())
         .all()
     )
-    return reports
+    return [_decorate_report(db, r) for r in reports]
+
+
+def _decorate_report(db: Session, report: PatientReport) -> ReportResponse:
+    """complaints is encrypted at rest; decrypt it for the response here
+    rather than relying on FastAPI's automatic ORM-to-Pydantic pass-through,
+    which would otherwise hand back raw ciphertext bytes."""
+    return ReportResponse(
+        report_id=report.report_id,
+        report_date=report.report_date,
+        diagnosis=report.diagnosis,
+        diagnosis_status=report.diagnosis_status,
+        complaints=decrypt_field(db, report.complaints),
+        created_at=report.created_at,
+    )
 
 
 def _resolve_patient(body: ReportCreateRequest, db: Session, doctor: Doctor) -> Patient:
@@ -216,15 +231,18 @@ def _resolve_patient(body: ReportCreateRequest, db: Session, doctor: Doctor) -> 
     db.flush()
 
     if body.patient_identity is not None:
+        identity_in = body.patient_identity
+        mrn = identity_in.facility_mrn.strip() if identity_in.facility_mrn else None
         db.add(
             PatientIdentity(
                 patient_id=patient.patient_id,
                 facility_id=doctor.facility_id,
-                full_name=body.patient_identity.full_name.strip(),
-                date_of_birth=body.patient_identity.date_of_birth,
-                contact_number=body.patient_identity.contact_number,
-                facility_mrn=body.patient_identity.facility_mrn,
-                abha_id=normalise_digits(body.patient_identity.abha_id),
+                full_name=encrypt_field(db, identity_in.full_name.strip()),
+                date_of_birth=encrypt_date(db, identity_in.date_of_birth),
+                contact_number=encrypt_field(db, identity_in.contact_number),
+                facility_mrn=encrypt_field(db, mrn),
+                facility_mrn_hash=hash_field(mrn.lower()) if mrn else None,
+                abha_id=normalise_digits(identity_in.abha_id),
             )
         )
         try:
