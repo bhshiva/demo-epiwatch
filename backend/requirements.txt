@@ -8,3 +8,4 @@ argon2-cffi
 pyjwt
 pytest
 httpx
+redis

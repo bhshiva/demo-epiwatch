@@ -6,8 +6,14 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_session
 from app.deps import require_role
-from app.models import AstResult, Doctor, LabIsolate
-from app.schemas import IsolateCreate, IsolateOut, LabSummary
+from app.models import AstResult, Doctor, IsolateStrainLink, LabIsolate, StrainCluster
+from app.schemas import (
+    IsolateCreate,
+    IsolateOut,
+    LabSummary,
+    StrainClusterCreate,
+    StrainClusterOut,
+)
 from app.services.antibiotics import antibiotic_class, is_mdr
 
 router = APIRouter(prefix="/lab", tags=["lab"])
@@ -279,3 +285,123 @@ def link_to_report(
     db.commit()
     db.refresh(isolate)
     return _decorate(isolate)
+
+
+def _decorate_strain(strain: StrainCluster) -> StrainClusterOut:
+    out = StrainClusterOut.model_validate(strain)
+    out.isolate_count = len(strain.links)
+    return out
+
+
+@router.post("/strains", response_model=StrainClusterOut, status_code=status.HTTP_201_CREATED)
+def create_strain(
+    body: StrainClusterCreate,
+    db: Session = Depends(get_session),
+    user: Doctor = Depends(lab_user),
+):
+    """Name a new strain cluster, e.g. once sequencing/epi-linkage identifies one."""
+    strain = StrainCluster(
+        pathogen=body.pathogen,
+        designation=body.designation,
+        clonal_group=body.clonal_group,
+        facility_id=user.facility_id,
+        notes=body.notes,
+    )
+    db.add(strain)
+    db.commit()
+    db.refresh(strain)
+    return _decorate_strain(strain)
+
+
+@router.get("/strains", response_model=list[StrainClusterOut])
+def list_strains(
+    pathogen: str | None = None,
+    db: Session = Depends(get_session),
+    user: Doctor = Depends(lab_user),
+):
+    """
+    Strains visible to this facility: ones it started, plus any it has since
+    linked an isolate to (a cluster can span facilities once recognised).
+    """
+    query = (
+        db.query(StrainCluster)
+        .options(selectinload(StrainCluster.links))
+        .outerjoin(IsolateStrainLink, IsolateStrainLink.strain_id == StrainCluster.strain_id)
+        .outerjoin(LabIsolate, LabIsolate.isolate_id == IsolateStrainLink.isolate_id)
+        .filter(
+            (StrainCluster.facility_id == user.facility_id)
+            | (LabIsolate.facility_id == user.facility_id)
+        )
+        .distinct()
+    )
+    if pathogen:
+        query = query.filter(StrainCluster.pathogen == pathogen)
+    rows = query.order_by(StrainCluster.first_detected_at.desc()).all()
+    return [_decorate_strain(s) for s in rows]
+
+
+@router.post("/isolates/{isolate_id}/strain-link", response_model=StrainClusterOut)
+def link_isolate_to_strain(
+    isolate_id: str,
+    strain_id: str,
+    db: Session = Depends(get_session),
+    user: Doctor = Depends(lab_user),
+):
+    """Assign an isolate to a strain cluster. Reassignment adds a new link row."""
+    isolate = db.query(LabIsolate).filter(LabIsolate.isolate_id == isolate_id).first()
+    if isolate is None or isolate.facility_id != user.facility_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Isolate not found")
+
+    strain = (
+        db.query(StrainCluster)
+        .options(selectinload(StrainCluster.links))
+        .filter(StrainCluster.strain_id == strain_id)
+        .first()
+    )
+    if strain is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Strain not found")
+
+    existing = (
+        db.query(IsolateStrainLink)
+        .filter_by(isolate_id=isolate.isolate_id, strain_id=strain.strain_id)
+        .first()
+    )
+    if existing is None:
+        db.add(
+            IsolateStrainLink(
+                isolate_id=isolate.isolate_id,
+                strain_id=strain.strain_id,
+                assigned_by=user.doctor_id,
+            )
+        )
+        db.commit()
+        db.refresh(strain)
+
+    return _decorate_strain(strain)
+
+
+@router.get("/strains/{strain_id}/isolates", response_model=list[IsolateOut])
+def strain_isolates(
+    strain_id: str,
+    db: Session = Depends(get_session),
+    user: Doctor = Depends(lab_user),
+):
+    """
+    This facility's isolates linked to the strain, for outbreak-cluster review.
+
+    Deliberately facility-scoped, matching every other lab.py read: a lab
+    user sees its own facility's data, never another facility's, even for a
+    strain that spans multiple facilities. The cross-facility view of a
+    strain's full spread belongs to the Health Authority surveillance
+    endpoints, not here.
+    """
+    rows = (
+        db.query(LabIsolate)
+        .options(selectinload(LabIsolate.ast_results))
+        .join(IsolateStrainLink, IsolateStrainLink.isolate_id == LabIsolate.isolate_id)
+        .filter(IsolateStrainLink.strain_id == strain_id)
+        .filter(LabIsolate.facility_id == user.facility_id)
+        .order_by(LabIsolate.created_at.desc())
+        .all()
+    )
+    return [_decorate(r) for r in rows]

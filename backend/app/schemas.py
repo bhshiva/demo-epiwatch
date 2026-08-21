@@ -14,7 +14,15 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
     doctor_id: uuid.UUID
     name: str
-    facility_id: uuid.UUID
+    # None for health_authority/admin accounts, which aren't tied to one
+    # facility.
+    facility_id: uuid.UUID | None
+    must_change_password: bool = False
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 class PrescriptionIn(BaseModel):
@@ -261,3 +269,84 @@ class LabSummary(BaseModel):
     pending_cultures: int
     mdr_isolates_week: int
     resistance_rate_week: float | None
+
+
+class StrainClusterCreate(BaseModel):
+    pathogen: str
+    designation: str | None = None
+    clonal_group: str | None = None
+    notes: str | None = None
+
+
+class StrainClusterOut(BaseModel):
+    strain_id: uuid.UUID
+    pathogen: str
+    designation: str | None
+    clonal_group: str | None
+    facility_id: uuid.UUID | None
+    first_detected_at: datetime
+    notes: str | None
+    isolate_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+# --- Facility onboarding (admin) ---
+
+
+class FacilityApplicationCreate(BaseModel):
+    """
+    Submitted by a hospital/clinic with no account yet -- an unauthenticated
+    endpoint. Everything here is what admin needs to review the request and,
+    on approval, provision the Facility + Doctor account.
+    """
+
+    facility_name: str
+    facility_type: str  # "Hospital" | "Clinic" | "Dispensary"
+    district: str
+    state: str
+    contact_name: str
+    contact_email: str
+    contact_phone: str | None = None
+    license_no: str | None = None
+    requested_role: str  # "doctor" | "lab"
+
+
+class FacilityApplicationOut(BaseModel):
+    application_id: uuid.UUID
+    facility_name: str
+    facility_type: str
+    district: str
+    state: str
+    contact_name: str
+    contact_email: str
+    contact_phone: str | None
+    license_no: str | None
+    requested_role: str
+    status: str
+    reviewed_at: datetime | None
+    rejection_reason: str | None
+    submitted_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ApplicationRejectRequest(BaseModel):
+    reason: str
+
+
+class ApplicationApproveResponse(BaseModel):
+    """
+    The one-time credential for the new account, shown to admin exactly
+    once -- there's no email/notification path yet, so admin communicates
+    this out-of-band. The account must change it on first login
+    (must_change_password on the created Doctor row).
+    """
+
+    application: FacilityApplicationOut
+    facility_id: uuid.UUID
+    doctor_id: uuid.UUID
+    email: str
+    temporary_password: str

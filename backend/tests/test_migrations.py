@@ -16,7 +16,14 @@ def test_master_tables_exist(conn):
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'master'"
         )
         tables = {row[0] for row in cur.fetchall()}
-    assert tables == {"doctors", "facilities", "patients", "patient_identities"}
+    assert tables == {
+        "doctors",
+        "facilities",
+        "patients",
+        "patient_identities",
+        # Migration 011: facility/clinic access requests, reviewed by admin.
+        "facility_applications",
+    }
 
 def test_raw_tables_exist(conn):
     with conn.cursor() as cur:

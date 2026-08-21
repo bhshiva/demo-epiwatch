@@ -235,3 +235,75 @@ def test_summary_excludes_untested_drugs_from_the_resistance_rate():
     }
     if body["resistance_rate_week"] is not None:
         assert 0.0 <= body["resistance_rate_week"] <= 1.0
+
+
+def test_strain_cluster_lifecycle():
+    """Create a strain, link an isolate to it, read it back both ways."""
+    headers = _lab_headers()
+    isolate = client.post("/lab/isolates", json=_panel(), headers=headers).json()
+
+    strain = client.post(
+        "/lab/strains",
+        json={"pathogen": "Klebsiella pneumoniae", "designation": "ST258"},
+        headers=headers,
+    )
+    assert strain.status_code == 201
+    strain_body = strain.json()
+    assert strain_body["designation"] == "ST258"
+    assert strain_body["isolate_count"] == 0
+
+    linked = client.post(
+        f"/lab/isolates/{isolate['isolate_id']}/strain-link",
+        params={"strain_id": strain_body["strain_id"]},
+        headers=headers,
+    )
+    assert linked.status_code == 200
+    assert linked.json()["isolate_count"] == 1
+
+    listed = client.get("/lab/strains", headers=headers).json()
+    assert any(s["strain_id"] == strain_body["strain_id"] for s in listed)
+
+    cluster_isolates = client.get(
+        f"/lab/strains/{strain_body['strain_id']}/isolates", headers=headers
+    ).json()
+    assert any(i["isolate_id"] == isolate["isolate_id"] for i in cluster_isolates)
+
+
+def test_linking_the_same_isolate_to_a_strain_twice_is_idempotent():
+    headers = _lab_headers()
+    isolate = client.post("/lab/isolates", json=_panel(), headers=headers).json()
+    strain = client.post(
+        "/lab/strains", json={"pathogen": "Klebsiella pneumoniae"}, headers=headers
+    ).json()
+
+    for _ in range(2):
+        resp = client.post(
+            f"/lab/isolates/{isolate['isolate_id']}/strain-link",
+            params={"strain_id": strain["strain_id"]},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["isolate_count"] == 1
+
+
+def test_linking_an_unknown_strain_returns_404():
+    headers = _lab_headers()
+    isolate = client.post("/lab/isolates", json=_panel(), headers=headers).json()
+
+    resp = client.post(
+        f"/lab/isolates/{isolate['isolate_id']}/strain-link",
+        params={"strain_id": str(uuid.uuid4())},
+        headers=headers,
+    )
+    assert resp.status_code == 404
+
+
+def test_a_doctor_cannot_reach_strain_endpoints():
+    headers = _doctor_headers()
+    assert client.get("/lab/strains", headers=headers).status_code == 403
+    assert (
+        client.post(
+            "/lab/strains", json={"pathogen": "E. coli"}, headers=headers
+        ).status_code
+        == 403
+    )

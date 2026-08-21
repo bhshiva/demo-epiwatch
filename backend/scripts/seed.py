@@ -9,6 +9,10 @@ SEED_DOCTOR_EMAIL = "doctor@epiwatch.test"
 SEED_DOCTOR_PASSWORD = "EpiWatch123!"
 SEED_LAB_EMAIL = "lab@epiwatch.test"
 SEED_LAB_PASSWORD = "EpiWatch123!"
+SEED_HEALTH_AUTHORITY_EMAIL = "health-authority@epiwatch.test"
+SEED_HEALTH_AUTHORITY_PASSWORD = "EpiWatch123!"
+SEED_ADMIN_EMAIL = "admin@epiwatch.test"
+SEED_ADMIN_PASSWORD = "EpiWatch123!"
 
 
 def _ensure_facility(db):
@@ -47,7 +51,7 @@ def _ensure_user(db, facility, *, email, password, name, specialization, license
     user = Doctor(
         name=name,
         specialization=specialization,
-        facility_id=facility.facility_id,
+        facility_id=facility.facility_id if facility else None,
         license_no=license_no,
         email=email,
         password_hash=hash_password(password),
@@ -77,10 +81,27 @@ def seed():
             license_no="MH-LAB-201", role="lab",
         )
 
+        # Health authority and admin aren't tied to one facility -- pass
+        # facility=None.
+        ha_user, ha_created = _ensure_user(
+            db, None,
+            email=SEED_HEALTH_AUTHORITY_EMAIL, password=SEED_HEALTH_AUTHORITY_PASSWORD,
+            name="Dr. Meera Iyer", specialization=None,
+            license_no=None, role="health_authority",
+        )
+        admin_user, admin_created = _ensure_user(
+            db, None,
+            email=SEED_ADMIN_EMAIL, password=SEED_ADMIN_PASSWORD,
+            name="Ravi Kulkarni", specialization=None,
+            license_no=None, role="admin",
+        )
+
         db.commit()
         print(f"Facility {facility.facility_id}")
-        print(f"  doctor {doctor.doctor_id} ({doctor.role}) {'created' if doctor_created else 'existing'}")
-        print(f"  lab    {lab_user.doctor_id} ({lab_user.role}) {'created' if lab_created else 'existing'}")
+        print(f"  doctor            {doctor.doctor_id} ({doctor.role}) {'created' if doctor_created else 'existing'}")
+        print(f"  lab               {lab_user.doctor_id} ({lab_user.role}) {'created' if lab_created else 'existing'}")
+        print(f"  health_authority  {ha_user.doctor_id} ({ha_user.role}) {'created' if ha_created else 'existing'}")
+        print(f"  admin             {admin_user.doctor_id} ({admin_user.role}) {'created' if admin_created else 'existing'}")
     finally:
         db.close()
 

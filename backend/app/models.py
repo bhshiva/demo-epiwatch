@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, date
-from sqlalchemy import String, ForeignKey, TIMESTAMP, Date, Text, Integer, Numeric, UniqueConstraint
+from sqlalchemy import String, ForeignKey, TIMESTAMP, Date, Text, Integer, Numeric, UniqueConstraint, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
@@ -24,13 +24,21 @@ class Doctor(Base):
     doctor_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String)
     specialization: Mapped[str | None] = mapped_column(String)
-    facility_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("master.facilities.facility_id"))
+    # Nullable: health_authority and admin accounts aren't tied to one
+    # facility (a health authority sees every facility; admin approves
+    # accounts before any facility-scoped work exists for them). Every
+    # doctor/lab row still has one.
+    facility_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("master.facilities.facility_id"))
     license_no: Mapped[str | None] = mapped_column(String)
     role: Mapped[str] = mapped_column(String, default="doctor")
     email: Mapped[str] = mapped_column(String, unique=True)
     password_hash: Mapped[str] = mapped_column(String)
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(TIMESTAMP)
+    # Set true when admin provisions an account with a generated one-time
+    # password; cleared once the user sets their own via POST
+    # /auth/change-password.
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
 class Patient(Base):
@@ -237,3 +245,34 @@ class IsolateStrainLink(Base):
     assigned_by: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("master.doctors.doctor_id"))
 
     strain: Mapped["StrainCluster"] = relationship(back_populates="links")
+
+
+class FacilityApplication(Base):
+    """A hospital/clinic's request for access, reviewed by an admin account."""
+
+    __tablename__ = "facility_applications"
+    __table_args__ = {"schema": "master"}
+
+    application_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+
+    facility_name: Mapped[str] = mapped_column(String)
+    facility_type: Mapped[str] = mapped_column(String)
+    district: Mapped[str] = mapped_column(String)
+    state: Mapped[str] = mapped_column(String)
+
+    contact_name: Mapped[str] = mapped_column(String)
+    contact_email: Mapped[str] = mapped_column(String)
+    contact_phone: Mapped[str | None] = mapped_column(String)
+    license_no: Mapped[str | None] = mapped_column(String)
+
+    requested_role: Mapped[str] = mapped_column(String)
+
+    status: Mapped[str] = mapped_column(String, default="pending")
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("master.doctors.doctor_id"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP)
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+
+    created_facility_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("master.facilities.facility_id"))
+    created_doctor_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("master.doctors.doctor_id"))
+
+    submitted_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)

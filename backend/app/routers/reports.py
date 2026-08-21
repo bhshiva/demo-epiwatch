@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.deps import get_current_doctor
+from app.deps import require_role
 from app.models import (
     AstResult,
     Doctor,
@@ -25,12 +25,16 @@ from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
+# Health authority and admin have their own surfaces; reports are a
+# doctor/lab clinical concern.
+clinical_user = require_role("doctor", "lab")
+
 
 @router.post("", response_model=ReportResponse)
 def create_report(
     body: ReportCreateRequest,
     db: Session = Depends(get_session),
-    doctor: Doctor = Depends(get_current_doctor),
+    doctor: Doctor = Depends(clinical_user),
 ):
     patient = _resolve_patient(body, db, doctor)
 
@@ -112,7 +116,7 @@ def create_report(
 @router.get("", response_model=list[ReportResponse])
 def list_reports(
     db: Session = Depends(get_session),
-    doctor: Doctor = Depends(get_current_doctor),
+    doctor: Doctor = Depends(clinical_user),
 ):
     reports = (
         db.query(PatientReport)

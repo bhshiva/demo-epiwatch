@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.deps import get_current_doctor
+from app.deps import require_role
 from app.models import Doctor, LabResult, Patient, PatientIdentity, PatientReport
 from app.schemas import (
     AbhaVerifyRequest,
@@ -25,12 +25,16 @@ from app.services.abha import (
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
+# Health authority and admin have their own surfaces; identifiable patient
+# data is a doctor/lab clinical concern.
+clinical_user = require_role("doctor", "lab")
+
 
 @router.get("/search", response_model=list[PatientSearchResult])
 def search_patients(
     q: str = Query(min_length=1, description="Name or facility MRN fragment"),
     db: Session = Depends(get_session),
-    doctor: Doctor = Depends(get_current_doctor),
+    doctor: Doctor = Depends(clinical_user),
 ):
     """
     Find patients previously seen at the caller's own facility.
@@ -94,7 +98,7 @@ def search_patients(
 def match_patients(
     body: PatientMatchRequest,
     db: Session = Depends(get_session),
-    doctor: Doctor = Depends(get_current_doctor),
+    doctor: Doctor = Depends(clinical_user),
 ):
     """
     Possible duplicates for a patient about to be registered, scored and
@@ -121,7 +125,7 @@ def match_patients(
 @router.post("/verify-abha", response_model=AbhaVerifyResponse)
 async def verify_abha(
     body: AbhaVerifyRequest,
-    doctor: Doctor = Depends(get_current_doctor),
+    doctor: Doctor = Depends(clinical_user),
 ):
     """
     Check an ABHA number: format and checksum locally, then the national
@@ -177,7 +181,7 @@ async def verify_abha(
 def patient_history(
     patient_id: str,
     db: Session = Depends(get_session),
-    doctor: Doctor = Depends(get_current_doctor),
+    doctor: Doctor = Depends(clinical_user),
 ):
     """Prior reports for one patient, restricted to the caller's facility."""
     identity = (
