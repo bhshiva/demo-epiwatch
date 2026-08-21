@@ -31,6 +31,9 @@ def test_raw_tables_exist(conn):
         # Migration 007: one organism, many antibiotic results.
         "lab_isolates",
         "ast_results",
+        # Migration 009: manual strain-cluster grouping for AMR surveillance.
+        "strain_clusters",
+        "isolate_strain_links",
     }
 
 

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, date
-from sqlalchemy import String, ForeignKey, TIMESTAMP, Date, Text, Integer, Numeric
+from sqlalchemy import String, ForeignKey, TIMESTAMP, Date, Text, Integer, Numeric, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
@@ -192,3 +192,48 @@ class AstResult(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
 
     isolate: Mapped["LabIsolate"] = relationship(back_populates="ast_results")
+
+
+class StrainCluster(Base):
+    """A named clone/lineage that one or more isolates get linked to."""
+
+    __tablename__ = "strain_clusters"
+    __table_args__ = {"schema": "raw"}
+
+    strain_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    pathogen: Mapped[str] = mapped_column(String)
+    designation: Mapped[str | None] = mapped_column(String)
+    clonal_group: Mapped[str | None] = mapped_column(String)
+    facility_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("master.facilities.facility_id"))
+    first_detected_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+
+    links: Mapped[list["IsolateStrainLink"]] = relationship(
+        back_populates="strain", cascade="all, delete-orphan"
+    )
+
+
+class IsolateStrainLink(Base):
+    """
+    One isolate's assignment to one strain.
+
+    A link table rather than a FK on lab_isolates: an assignment can be
+    corrected, and keeping the row (rather than overwriting a single column)
+    preserves that history, matching how lab_isolates itself handles
+    amendments.
+    """
+
+    __tablename__ = "isolate_strain_links"
+    __table_args__ = (
+        UniqueConstraint("isolate_id", "strain_id"),
+        {"schema": "raw"},
+    )
+
+    link_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    isolate_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("raw.lab_isolates.isolate_id"))
+    strain_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("raw.strain_clusters.strain_id"))
+    assigned_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    assigned_by: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("master.doctors.doctor_id"))
+
+    strain: Mapped["StrainCluster"] = relationship(back_populates="links")

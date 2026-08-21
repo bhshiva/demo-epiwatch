@@ -50,6 +50,13 @@ LAST_LINE_CLASSES = {"Carbapenems", "Polymyxins", "Glycopeptides", "Oxazolidinon
 # Preferred when they cover the organism, to limit selection pressure.
 NARROW_SPECTRUM = {"Nitrofurantoin", "Penicillin", "Ampicillin", "Co-trimoxazole"}
 
+# WHO/ECDC define multidrug resistance as non-susceptibility to at least one
+# agent in three or more antimicrobial classes. Shared here so the live
+# per-isolate summary (lab.py) and the batch surveillance aggregates
+# (scripts/generate_surveillance_tables.py) can never disagree on the
+# definition.
+MDR_CLASS_THRESHOLD = 3
+
 
 def antibiotic_class(name: str | None) -> str | None:
     if not name:
@@ -59,3 +66,8 @@ def antibiotic_class(name: str | None) -> str | None:
 
 def is_last_line(name: str | None) -> bool:
     return antibiotic_class(name) in LAST_LINE_CLASSES
+
+
+def is_mdr(resistant_classes: set[str]) -> bool:
+    """Whether resistance spans enough distinct classes to count as MDR."""
+    return len(resistant_classes) >= MDR_CLASS_THRESHOLD

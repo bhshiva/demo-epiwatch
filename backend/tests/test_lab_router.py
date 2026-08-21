@@ -2,9 +2,13 @@
 
 import uuid
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.models import Doctor
+from app.routers.lab import lab_user
 from scripts.seed import (
     SEED_DOCTOR_EMAIL,
     SEED_DOCTOR_PASSWORD,
@@ -60,6 +64,19 @@ def test_a_doctor_cannot_reach_lab_routes():
     headers = _doctor_headers()
     assert client.get("/lab/worklist", headers=headers).status_code == 403
     assert client.post("/lab/isolates", json=_panel(), headers=headers).status_code == 403
+
+
+def test_admin_no_longer_has_lab_access():
+    """
+    Admin's job is facility onboarding, not patient/isolate data. It used to
+    piggyback on lab.py's require_role("lab", "admin") grant; that grant was
+    removed once the admin role's real purpose (application review) was
+    defined, so admin must be rejected here exactly like any other role.
+    """
+    admin = Doctor(name="Admin", email="a@x", password_hash="x", role="admin")
+    with pytest.raises(HTTPException) as exc:
+        lab_user(user=admin)
+    assert exc.value.status_code == 403
 
 
 def test_login_returns_the_role():

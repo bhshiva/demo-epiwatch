@@ -8,17 +8,13 @@ from app.db import get_session
 from app.deps import require_role
 from app.models import AstResult, Doctor, LabIsolate
 from app.schemas import IsolateCreate, IsolateOut, LabSummary
-from app.services.antibiotics import antibiotic_class
+from app.services.antibiotics import antibiotic_class, is_mdr
 
 router = APIRouter(prefix="/lab", tags=["lab"])
 
-# A laboratory user owns this workflow; doctors read results through the
-# patient record instead.
-lab_user = require_role("lab", "admin")
-
-# WHO/ECDC define multidrug resistance as non-susceptibility to at least one
-# agent in three or more antimicrobial classes.
-MDR_CLASS_THRESHOLD = 3
+# A laboratory user owns this workflow. Admin no longer gets a lab-access
+# backdoor here: its role is facility onboarding, not patient/isolate data.
+lab_user = require_role("lab")
 
 
 def _decorate(isolate: LabIsolate) -> IsolateOut:
@@ -30,7 +26,7 @@ def _decorate(isolate: LabIsolate) -> IsolateOut:
     out = IsolateOut.model_validate(isolate)
     out.tested_count = len(scored)
     out.resistant_count = len(resistant)
-    out.is_mdr = len(resistant_classes) >= MDR_CLASS_THRESHOLD
+    out.is_mdr = is_mdr(resistant_classes)
     return out
 
 
