@@ -212,9 +212,31 @@ class _PathogenChart extends StatelessWidget {
                             const FlLine(color: AppColors.border, strokeWidth: 1),
                       ),
                       borderData: FlBorderData(show: false),
+                      // Headroom above the tallest bar so its value label
+                      // has somewhere to sit without the chart clipping it.
+                      maxY: data.isEmpty
+                          ? 10
+                          : data.map((d) => d.count).reduce((a, b) => a > b ? a : b) * 1.18,
                       barTouchData: BarTouchData(
                         touchTooltipData: BarTouchTooltipData(
                           getTooltipColor: (_) => AppColors.textPrimary,
+                          // Value leads (large, strong), category follows
+                          // (secondary) -- the reader has the bar, wants the
+                          // number.
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
+                            '${rod.toY.toInt()}\n',
+                            const TextStyle(
+                                color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
+                            children: [
+                              TextSpan(
+                                text: data[groupIndex].pathogen,
+                                style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       titlesData: FlTitlesData(
@@ -257,7 +279,12 @@ class _PathogenChart extends StatelessWidget {
                               toY: data[i].count.toDouble(),
                               color: AppColors.chartBlue,
                               width: 22,
-                              borderRadius: BorderRadius.circular(3),
+                              // 4px rounded data-end at the cap, square at
+                              // the baseline -- never round a bar's foot.
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(4),
+                                topRight: Radius.circular(4),
+                              ),
                             ),
                           ]),
                       ],

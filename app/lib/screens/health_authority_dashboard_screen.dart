@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -141,6 +143,34 @@ class _OutbreakMap extends StatelessWidget {
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.epiwatch.app',
                   ),
+                  // Heat glow: three concentric, decreasingly-opaque
+                  // circles per facility with active cases, radius scaled
+                  // by case count (sqrt, so one outlier facility doesn't
+                  // swallow the map). flutter_map has no first-class
+                  // heatmap layer, so this is the standard stacked-
+                  // translucent-circle technique instead of pulling in a
+                  // separate plugin for one effect.
+                  CircleLayer(
+                    circles: [
+                      for (final f in located.where((f) => f.recentCaseCount > 0)) ...[
+                        CircleMarker(
+                          point: LatLng(f.latitude!, f.longitude!),
+                          radius: _heatRadius(f.recentCaseCount) * 1.8,
+                          color: AppColors.statusCritical.withValues(alpha: 0.06),
+                        ),
+                        CircleMarker(
+                          point: LatLng(f.latitude!, f.longitude!),
+                          radius: _heatRadius(f.recentCaseCount) * 1.1,
+                          color: AppColors.statusCritical.withValues(alpha: 0.14),
+                        ),
+                        CircleMarker(
+                          point: LatLng(f.latitude!, f.longitude!),
+                          radius: _heatRadius(f.recentCaseCount) * 0.55,
+                          color: AppColors.statusCritical.withValues(alpha: 0.28),
+                        ),
+                      ],
+                    ],
+                  ),
                   MarkerLayer(
                     markers: [
                       for (final f in located)
@@ -169,6 +199,8 @@ class _OutbreakMap extends StatelessWidget {
       ),
     );
   }
+
+  double _heatRadius(int caseCount) => 18 + math.sqrt(caseCount) * 14;
 }
 
 class _WatchList extends StatelessWidget {
@@ -239,40 +271,77 @@ class _DiseaseDailyChart extends StatelessWidget {
               child: Center(child: MutedText('No cases recorded in this window.')),
             )
           else
-            for (final entry in entries.take(10))
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 180,
-                      child: Text(entry.key,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
-                    ),
-                    Expanded(
-                      child: LayoutBuilder(builder: (context, constraints) {
-                        final maxValue = entries.first.value;
-                        final width =
-                            maxValue == 0 ? 0.0 : constraints.maxWidth * entry.value / maxValue;
-                        return Container(
-                          height: 14,
-                          width: width,
-                          decoration: BoxDecoration(
-                            color: AppColors.chartBlue,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(width: 10),
-                    Text('${entry.value}',
-                        style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
-                  ],
-                ),
-              ),
+            _DiagnosisBarList(entries: entries.take(10).toList()),
         ],
       ),
+    );
+  }
+}
+
+/// Horizontal magnitude comparison across diagnoses. Single series (one
+/// hue, no legend needed -- the section title already says what's
+/// plotted), so the only job here is getting proportional widths and a
+/// direct value label right.
+class _DiagnosisBarList extends StatelessWidget {
+  final List<MapEntry<String, int>> entries;
+  const _DiagnosisBarList({required this.entries});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = entries.first.value;
+    return Column(
+      children: [
+        for (final entry in entries)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Tooltip(
+              message: '${entry.key}: ${entry.value}',
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 160,
+                    child: Text(entry.key,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                  ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      // FractionallySizedBox scales to whatever bounded
+                      // width its parent (Expanded) actually resolves to --
+                      // unlike a manually computed pixel width from a
+                      // LayoutBuilder, it can't end up unbounded/infinite
+                      // and silently render every bar full-width regardless
+                      // of value, which is what happened before this fix.
+                      child: FractionallySizedBox(
+                        widthFactor: maxValue == 0 ? 0 : entry.value / maxValue,
+                        child: Container(
+                          height: 14,
+                          decoration: const BoxDecoration(
+                            color: AppColors.chartBlue,
+                            // Rounded data-end only (the bar's leading edge
+                            // stays square, matching the vertical-bar spec
+                            // rotated 90 degrees).
+                            borderRadius: BorderRadius.horizontal(right: Radius.circular(4)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 28,
+                    child: Text('${entry.value}',
+                        style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

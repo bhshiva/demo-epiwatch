@@ -1,7 +1,7 @@
 # EpiWatch (Flutter)
 
-Windows/Android/web EHR + antimicrobial-resistance (AMR) surveillance app for
-India, built for Smart India Hackathon (team SIH26_40, "Big Hero 6",
+Windows/Android/web/iOS EHR + antimicrobial-resistance (AMR) surveillance app
+for India, built for Smart India Hackathon (team SIH26_40, "Big Hero 6",
 HealthTech). This is the Flutter rewrite of a WPF client; see
 [FORK_PROVENANCE.md](FORK_PROVENANCE.md) for where it forked from and why the
 backend is duplicated here.
@@ -9,7 +9,7 @@ backend is duplicated here.
 ## Layout
 
 ```
-app/         Flutter client (windows + android + web from one codebase)
+app/         Flutter client (windows + android + web + ios from one codebase)
 backend/     FastAPI + PostgreSQL, copied verbatim from the WPF repo
 ```
 
@@ -52,6 +52,11 @@ All 6 screens are live against the real backend, not placeholders:
 - Windows build launches and stays responsive. Android compiles but is
   **unverified** — no device/emulator was ever attached in this session.
   Don't claim Android works without actually running it on a device.
+- iOS platform scaffolding (`app/ios/`) exists but is **entirely
+  unverified** — added via `flutter create --platforms=ios .` from a
+  Windows machine, which cannot run `pod install`, build, or launch an iOS
+  target (needs a Mac with Xcode). Don't claim iOS works, or even
+  compiles, until someone actually builds it on macOS.
 
 ## Architecture decisions (don't relitigate without a reason)
 

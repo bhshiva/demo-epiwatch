@@ -24,9 +24,20 @@ abstract final class AppColors {
 
   // Status. Ordered by escalation; surveillance UI leans on these heavily.
   static const statusNormal = Color(0xFF10B981);
-  static const statusMonitoring = Color(0xFFD97706);
+  // Re-stepped from the WPF-inherited 0xFFD97706: that value sits only
+  // ΔE 14.4 from statusCritical for a normal-vision viewer (dataviz skill's
+  // validator, --mode light), below the 15 floor -- Intermediate and
+  // Resistant read as barely distinguishable in the S/I/R chart, which is
+  // a real misreading risk in a resistance chart, not a cosmetic one. This
+  // value passes at ΔE 19.2. Flagged for the WPF Colors.xaml to pick up
+  // too, since CLAUDE.md wants the two clients on one palette.
+  static const statusMonitoring = Color(0xFFCA8A04);
   static const statusElevated = Color(0xFFEA580C);
   static const statusCritical = Color(0xFFDC2626);
+  // Neutral "no data" indicator (e.g. an antibiotic not yet tested) --
+  // deliberately achromatic so it never competes with the status hues
+  // above for identity; not a status color itself.
+  static const statusNotTested = Color(0xFF94A3B8);
 
   static const border = Color(0xFFD1DFD6);
   static const primaryButton = Color(0xFF1B4D3E);

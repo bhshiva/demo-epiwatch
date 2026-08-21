@@ -310,8 +310,50 @@ class _TrendCard extends StatelessWidget {
                   ),
                 ),
                 lineTouchData: LineTouchData(
+                  getTouchLineEnd: (_, _) => double.infinity,
+                  getTouchedSpotIndicator: (barData, spotIndexes) => spotIndexes
+                      .map((_) => TouchedSpotIndicatorData(
+                            FlLine(color: AppColors.border, strokeWidth: 1.5),
+                            FlDotData(
+                              getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
+                                radius: 4,
+                                color: Colors.white,
+                                strokeColor: bar.color ?? AppColors.textPrimary,
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                          ))
+                      .toList(),
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (_) => AppColors.textPrimary,
+                    // Without this, fl_chart falls back to a bare stack of
+                    // numbers with no series name -- exactly the "what is
+                    // this value even for" confusion this was reported for.
+                    getTooltipItems: (touchedSpots) {
+                      if (touchedSpots.isEmpty) return [];
+                      final date = labels[touchedSpots.first.x.toInt()];
+                      return [
+                        for (var i = 0; i < touchedSpots.length; i++)
+                          LineTooltipItem(
+                            i == 0 ? '$date\n' : '',
+                            const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600),
+                            children: [
+                              TextSpan(
+                                text:
+                                    '${DemoData.weeklyTrends[touchedSpots[i].barIndex].name}: ${touchedSpots[i].y.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: touchedSpots[i].bar.color ?? Colors.white,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ];
+                    },
                   ),
                 ),
                 lineBarsData: [
