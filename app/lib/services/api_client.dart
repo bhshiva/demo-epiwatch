@@ -168,4 +168,11 @@ class ApiClient {
     final res = await post('/lab/isolates', request.toJson());
     return Isolate.fromJson(res);
   }
+
+  /// Supersedes [isolateId] with a corrected result (`PATCH /lab/isolates/{id}`),
+  /// e.g. finalizing a worklist entry that was left pending/preliminary.
+  Future<Isolate> amendIsolate(String isolateId, IsolateCreateRequest request) async {
+    final res = await patch('/lab/isolates/$isolateId', request.toJson());
+    return Isolate.fromJson(res);
+  }
 }

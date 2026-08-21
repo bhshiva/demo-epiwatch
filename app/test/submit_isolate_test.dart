@@ -1,7 +1,45 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:epiwatch/models/lab_models.dart';
+import 'package:epiwatch/services/api_client.dart';
 import 'package:epiwatch/services/clinical_catalog.dart';
+import 'package:epiwatch/state/auth.dart';
 import 'package:epiwatch/state/submit_isolate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+/// Answers every request with a canned isolate and records the request it
+/// was called with, so a test can assert POST vs. PATCH and the target path.
+class _RecordingAdapter implements HttpClientAdapter {
+  RequestOptions? lastRequest;
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? stream,
+      Future<void>? cancelFuture) async {
+    lastRequest = options;
+    return ResponseBody.fromString(
+      jsonEncode({
+        'isolate_id': 'i1',
+        'status': 'final',
+        'created_at': '2026-08-01T00:00:00Z',
+        'pathogen': 'Escherichia coli',
+        'ast_results': [],
+        'resistant_count': 0,
+        'tested_count': 0,
+        'is_mdr': false,
+      }),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType]
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
 
 SubmitIsolateState _validState() => const SubmitIsolateState(
       accessionNo: 'ACC-1001',
@@ -176,6 +214,90 @@ void main() {
       expect(state.accessionNo, '');
       expect(state.pathogen, '');
       expect(state.isSubmitted, isFalse);
+    });
+
+    test('loadForEdit prefills the form and its AST panel from a worklist entry', () {
+      notifier.loadForEdit(const Isolate(
+        isolateId: 'i1',
+        accessionNo: 'ACC-9',
+        specimenType: 'Urine',
+        cultureResult: 'Growth - organism identified',
+        pathogen: 'Escherichia coli',
+        status: 'preliminary',
+        createdAt: '2026-08-01T00:00:00Z',
+        astResults: [
+          AstResult(antibiotic: 'Meropenem', astResult: 'Resistant', micValue: 16),
+        ],
+      ));
+
+      final state = container.read(submitIsolateProvider);
+      expect(state.isEditing, isTrue);
+      expect(state.editingIsolateId, 'i1');
+      expect(state.accessionNo, 'ACC-9');
+      expect(state.panel, hasLength(1));
+      expect(state.panel[0].antibiotic, 'Meropenem');
+      expect(state.panel[0].micValue, '16.0');
+    });
+
+    test('submitAnother clears editingIsolateId, leaving a fresh form', () {
+      notifier.loadForEdit(const Isolate(
+        isolateId: 'i1',
+        status: 'preliminary',
+        createdAt: '2026-08-01T00:00:00Z',
+      ));
+      expect(container.read(submitIsolateProvider).isEditing, isTrue);
+
+      notifier.submitAnother();
+
+      expect(container.read(submitIsolateProvider).isEditing, isFalse);
+    });
+
+    test('submit() amends via PATCH when editing an existing isolate', () async {
+      final adapter = _RecordingAdapter();
+      final dio = Dio(BaseOptions(baseUrl: 'http://test.local', validateStatus: (_) => true));
+      dio.httpClientAdapter = adapter;
+      final client = ApiClient(dio: dio);
+      final editContainer = ProviderContainer(overrides: [
+        apiClientProvider.overrideWithValue(client),
+      ]);
+      addTearDown(editContainer.dispose);
+      final editNotifier = editContainer.read(submitIsolateProvider.notifier);
+
+      editNotifier.loadForEdit(const Isolate(
+        isolateId: 'i1',
+        accessionNo: 'ACC-9',
+        cultureResult: 'Growth - organism identified',
+        pathogen: 'Escherichia coli',
+        status: 'preliminary',
+        createdAt: '2026-08-01T00:00:00Z',
+      ));
+
+      await editNotifier.submit();
+
+      expect(adapter.lastRequest?.method, 'PATCH');
+      expect(adapter.lastRequest?.path, '/lab/isolates/i1');
+      expect(editContainer.read(submitIsolateProvider).isSubmitted, isTrue);
+    });
+
+    test('submit() creates via POST when not editing', () async {
+      final adapter = _RecordingAdapter();
+      final dio = Dio(BaseOptions(baseUrl: 'http://test.local', validateStatus: (_) => true));
+      dio.httpClientAdapter = adapter;
+      final client = ApiClient(dio: dio);
+      final createContainer = ProviderContainer(overrides: [
+        apiClientProvider.overrideWithValue(client),
+      ]);
+      addTearDown(createContainer.dispose);
+      final createNotifier = createContainer.read(submitIsolateProvider.notifier);
+
+      createNotifier.setAccessionNo('ACC-1001');
+      createNotifier.setCultureResult('Growth - organism identified');
+      createNotifier.setPathogen('Escherichia coli');
+
+      await createNotifier.submit();
+
+      expect(adapter.lastRequest?.method, 'POST');
+      expect(adapter.lastRequest?.path, '/lab/isolates');
     });
   });
 }

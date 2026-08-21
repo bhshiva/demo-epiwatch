@@ -89,13 +89,15 @@ class _SubmitIsolateScreenState extends ConsumerState<SubmitIsolateScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Record Culture & Susceptibility',
-                style: TextStyle(
+            Text(state.isEditing ? 'Finalize Culture Result' : 'Record Culture & Susceptibility',
+                style: const TextStyle(
                     fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 7),
-            const MutedText(
-                'One organism per isolate, tested against a panel of antibiotics. '
-                'Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies.'),
+            MutedText(state.isEditing
+                ? 'Completing accession ${state.accessionNo.isEmpty ? '—' : state.accessionNo} from the worklist. '
+                    'Submitting supersedes the pending result with this one.'
+                : 'One organism per isolate, tested against a panel of antibiotics. '
+                    'Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies.'),
             const SizedBox(height: 22),
             if (state.error != null) ...[
               _ErrorBanner(message: state.error!),
@@ -136,18 +138,27 @@ class _SubmitIsolateScreenState extends ConsumerState<SubmitIsolateScreen> {
               MutedText(state.validationSummary),
               const SizedBox(height: 12),
             ],
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton(
-                onPressed: state.canSubmit ? notifier.submit : null,
-                child: state.isBusy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Submit Result'),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (state.isEditing) ...[
+                  TextButton(
+                    onPressed: state.isBusy ? null : notifier.submitAnother,
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                FilledButton(
+                  onPressed: state.canSubmit ? notifier.submit : null,
+                  child: state.isBusy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(state.isEditing ? 'Save Result' : 'Submit Result'),
+                ),
+              ],
             ),
           ],
         ),

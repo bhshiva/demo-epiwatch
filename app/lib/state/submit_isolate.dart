@@ -76,6 +76,7 @@ class SubmitIsolateState {
   final bool isSubmitted;
   final String submittedSummary;
   final String? error;
+  final String? editingIsolateId;
 
   const SubmitIsolateState({
     this.accessionNo = '',
@@ -95,7 +96,11 @@ class SubmitIsolateState {
     this.isSubmitted = false,
     this.submittedSummary = '',
     this.error,
+    this.editingIsolateId,
   });
+
+  /// Finalizing/amending a worklist entry rather than recording a new one.
+  bool get isEditing => editingIsolateId != null;
 
   bool get showSpecimenTypeOther => _isOther(specimenType);
   bool get showCultureResultOther => _isOther(cultureResult);
@@ -158,6 +163,7 @@ class SubmitIsolateState {
     bool? isSubmitted,
     String? submittedSummary,
     String? error,
+    String? editingIsolateId,
   }) =>
       SubmitIsolateState(
         accessionNo: accessionNo ?? this.accessionNo,
@@ -177,6 +183,7 @@ class SubmitIsolateState {
         isSubmitted: isSubmitted ?? this.isSubmitted,
         submittedSummary: submittedSummary ?? this.submittedSummary,
         error: error,
+        editingIsolateId: editingIsolateId ?? this.editingIsolateId,
       );
 }
 
@@ -211,6 +218,36 @@ class SubmitIsolateNotifier extends Notifier<SubmitIsolateState> {
     final next = [...state.panel];
     next[index] = row;
     state = state.copyWith(panel: next);
+  }
+
+  /// Prefills the form from an existing worklist entry so a technician can
+  /// finish/correct a pending culture instead of retyping it from scratch.
+  /// Submitting from this state amends the isolate rather than creating a
+  /// new one (see [submit]).
+  void loadForEdit(Isolate isolate) {
+    state = SubmitIsolateState(
+      accessionNo: isolate.accessionNo ?? '',
+      collectionDate: isolate.collectionDate ?? '',
+      testDate: isolate.testDate ?? '',
+      specimenType: isolate.specimenType ?? '',
+      cultureResult: isolate.cultureResult ?? '',
+      pathogen: isolate.pathogen ?? '',
+      infectionOrigin: isolate.infectionOrigin ?? 'Community-acquired',
+      status: isolate.status,
+      notes: isolate.notes ?? '',
+      panel: [
+        for (final a in isolate.astResults)
+          AstRowDraft(
+            antibiotic: a.antibiotic,
+            astResult: a.astResult ?? '',
+            micValue: a.micValue?.toString() ?? '',
+            micOperator: a.micOperator ?? '',
+            zoneDiameter: a.zoneDiameterMm?.toString() ?? '',
+            method: a.method ?? '',
+          ),
+      ],
+      editingIsolateId: isolate.isolateId,
+    );
   }
 
   /// Loads the standard Gram-negative panel so a full AST is a few clicks,
@@ -262,13 +299,17 @@ class SubmitIsolateNotifier extends Notifier<SubmitIsolateState> {
 
   Future<void> submit() async {
     if (!state.canSubmit) return;
+    final editingId = state.editingIsolateId;
     state = state.copyWith(isBusy: true, error: null);
     final api = ref.read(apiClientProvider);
     try {
-      final result = await api.createIsolate(buildRequest());
+      final result = editingId == null
+          ? await api.createIsolate(buildRequest())
+          : await api.amendIsolate(editingId, buildRequest());
+      final verb = editingId == null ? 'recorded' : 'updated';
       final summary = result.isMdr
-          ? '${result.pathogen ?? 'Culture'} recorded — flagged multidrug-resistant (${result.panelSummary}).'
-          : '${result.pathogen ?? 'Culture'} recorded (${result.panelSummary}).';
+          ? '${result.pathogen ?? 'Culture'} $verb — flagged multidrug-resistant (${result.panelSummary}).'
+          : '${result.pathogen ?? 'Culture'} $verb (${result.panelSummary}).';
       state = state.copyWith(isBusy: false, isSubmitted: true, submittedSummary: summary);
     } on ApiException catch (e) {
       state = state.copyWith(isBusy: false, error: e.message);

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/lab_models.dart';
 import '../state/lab_worklist.dart';
+import '../state/submit_isolate.dart';
 import '../theme/app_colors.dart';
 import '../widgets/section_card.dart';
 import '../widgets/status_chip.dart';
+import 'shell_screen.dart';
 
 /// Cultures still awaiting a final result, oldest first (server-sorted).
 class LabWorklistScreen extends ConsumerStatefulWidget {
@@ -60,7 +63,7 @@ class _LabWorklistScreenState extends ConsumerState<LabWorklistScreen> {
               const SizedBox(height: 6),
               MutedText(_summaryText(state)),
               const SizedBox(height: 18),
-              SectionCard(child: _WorklistBody(state: state)),
+              SectionCard(child: _WorklistBody(state: state, onOpen: _openIsolate)),
             ],
           ),
         ),
@@ -73,6 +76,13 @@ class _LabWorklistScreenState extends ConsumerState<LabWorklistScreen> {
     if (state.pending.isEmpty) return 'Nothing awaiting a final result';
     final n = state.pending.length;
     return '$n awaiting a final result';
+  }
+
+  /// Prefills the Culture & AST form from this worklist entry and switches
+  /// to that tab so the technician can finish/correct it there.
+  void _openIsolate(Isolate isolate) {
+    ref.read(submitIsolateProvider.notifier).loadForEdit(isolate);
+    ShellNav.of(context).navigateTo('submit-isolate');
   }
 }
 
@@ -100,7 +110,8 @@ class _ErrorBanner extends StatelessWidget {
 
 class _WorklistBody extends StatelessWidget {
   final LabWorklistState state;
-  const _WorklistBody({required this.state});
+  final ValueChanged<Isolate> onOpen;
+  const _WorklistBody({required this.state, required this.onOpen});
 
   @override
   Widget build(BuildContext context) {
@@ -131,17 +142,24 @@ class _WorklistBody extends StatelessWidget {
           DataColumn(label: Text('CULTURE RESULT')),
           DataColumn(label: Text('PATHOGEN')),
           DataColumn(label: Text('STATUS')),
+          DataColumn(label: Text('')),
         ],
         rows: [
           for (final iso in state.pending)
-            DataRow(cells: [
-              DataCell(Text(iso.accessionNo ?? '—')),
-              DataCell(Text(iso.collectionDate ?? '—')),
-              DataCell(Text(iso.specimenType ?? '—')),
-              DataCell(Text(iso.cultureResult ?? '—')),
-              DataCell(Text(iso.pathogen ?? '—')),
-              DataCell(StatusChip(label: iso.status)),
-            ]),
+            DataRow(
+              cells: [
+                DataCell(Text(iso.accessionNo ?? '—')),
+                DataCell(Text(iso.collectionDate ?? '—')),
+                DataCell(Text(iso.specimenType ?? '—')),
+                DataCell(Text(iso.cultureResult ?? '—')),
+                DataCell(Text(iso.pathogen ?? '—')),
+                DataCell(StatusChip(label: iso.status)),
+                DataCell(TextButton(
+                  onPressed: () => onOpen(iso),
+                  child: const Text('Finish'),
+                )),
+              ],
+            ),
         ],
       ),
     );
