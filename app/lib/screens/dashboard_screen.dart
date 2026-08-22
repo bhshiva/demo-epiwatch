@@ -60,8 +60,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 onSubmitReport: widget.onSubmitReport,
               ),
               const SizedBox(height: 22),
-              const SectionCard(
-                child: _PatientQueue(),
+              SectionCard(
+                child: _PatientQueue(reports: state.recentReports),
               ),
               const SizedBox(height: 18),
               _KpiRow(summary: state.summary, alertCount: DemoData.outbreakAlerts.length),
@@ -177,15 +177,122 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _PatientQueue extends StatelessWidget {
-  const _PatientQueue();
+class _PatientQueue extends StatefulWidget {
+  final List<ReportSummary> reports;
+  const _PatientQueue({required this.reports});
+
+  @override
+  State<_PatientQueue> createState() => _PatientQueueState();
+}
+
+class _PatientQueueState extends State<_PatientQueue> {
+  int _currentPage = 0;
+  static const int _pageSize = 7;
+
+  String _formatLastVisit(String? createdAtIso, String reportDate) {
+    DateTime? dt;
+    if (createdAtIso != null && createdAtIso.isNotEmpty) {
+      dt = DateTime.tryParse(createdAtIso);
+    }
+    dt ??= DateTime.tryParse(reportDate);
+    if (dt == null) return 'Just now';
+
+    final now = DateTime.now();
+    final target = dt.isUtc ? dt.toLocal() : dt;
+    final diff = now.difference(target);
+
+    if (diff.inSeconds < 45 || diff.isNegative) {
+      return 'Just now';
+    } else if (diff.inMinutes < 60) {
+      final mins = diff.inMinutes;
+      return mins <= 1 ? '1 min ago' : '$mins mins ago';
+    } else if (diff.inHours < 24) {
+      final hours = diff.inHours;
+      return hours <= 1 ? '1 hour ago' : '$hours hours ago';
+    } else if (diff.inDays < 2) {
+      return 'Yesterday';
+    } else if (diff.inDays < 30) {
+      return '${diff.inDays} days ago';
+    } else {
+      return reportDate;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<QueuePatient> queue = [];
+
+    // Dynamically populate live reports registered or updated
+    for (final r in widget.reports) {
+      final name = (r.patientName != null && r.patientName!.trim().isNotEmpty)
+          ? r.patientName!.trim()
+          : 'Registered Patient';
+      final ageGender = (r.ageGender != null && r.ageGender!.trim().isNotEmpty)
+          ? r.ageGender!.trim()
+          : '—';
+      final condition = (r.diagnosis != null && r.diagnosis!.trim().isNotEmpty)
+          ? r.diagnosis!.trim()
+          : (r.complaints != null && r.complaints!.trim().isNotEmpty
+              ? r.complaints!.trim()
+              : '—');
+      final status = (r.diagnosisStatus != null && r.diagnosisStatus!.trim().isNotEmpty)
+          ? r.diagnosisStatus!.trim()
+          : 'Suspected';
+      final lastVisit = _formatLastVisit(r.createdAt, r.reportDate);
+
+      queue.add(QueuePatient(
+        name: name,
+        ageGender: ageGender,
+        condition: condition,
+        status: status,
+        lastVisit: lastVisit,
+      ));
+    }
+
+    // Merge with demo data so table UI stays rich and full
+    for (final p in DemoData.patientQueue) {
+      if (!queue.any((q) => q.name.toLowerCase() == p.name.toLowerCase())) {
+        queue.add(p);
+      }
+    }
+
+    final totalPages = (queue.length / _pageSize).ceil();
+    final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+    final startIndex = safePage * _pageSize;
+    final endIndex = (startIndex + _pageSize > queue.length)
+        ? queue.length
+        : startIndex + _pageSize;
+    final pageItems = queue.isEmpty ? <QueuePatient>[] : queue.sublist(startIndex, endIndex);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionTitle("Today's Patient Queue"),
+        Row(
+          children: [
+            const Expanded(child: SectionTitle("Today's Patient Queue")),
+            if (queue.length > _pageSize) ...[
+              Text(
+                'Showing ${startIndex + 1}–$endIndex of ${queue.length}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.chevron_left, size: 20),
+                onPressed: safePage > 0
+                    ? () => setState(() => _currentPage = safePage - 1)
+                    : null,
+                tooltip: 'Previous batch',
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, size: 20),
+                onPressed: safePage < totalPages - 1
+                    ? () => setState(() => _currentPage = safePage + 1)
+                    : null,
+                tooltip: 'Next batch',
+              ),
+            ],
+          ],
+        ),
         const SizedBox(height: 12),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -201,7 +308,7 @@ class _PatientQueue extends StatelessWidget {
               DataColumn(label: Text('LAST VISIT')),
             ],
             rows: [
-              for (final p in DemoData.patientQueue)
+              for (final p in pageItems)
                 DataRow(cells: [
                   DataCell(Text(p.name)),
                   DataCell(Text(p.ageGender)),
@@ -510,26 +617,69 @@ class _RightRail extends StatelessWidget {
   }
 }
 
-class _RecentReports extends StatelessWidget {
+class _RecentReports extends StatefulWidget {
   final List<ReportSummary> reports;
   final bool isBusy;
   final VoidCallback onViewAll;
 
-  const _RecentReports({required this.reports, required this.isBusy, required this.onViewAll});
+  const _RecentReports({
+    required this.reports,
+    required this.isBusy,
+    required this.onViewAll,
+  });
+
+  @override
+  State<_RecentReports> createState() => _RecentReportsState();
+}
+
+class _RecentReportsState extends State<_RecentReports> {
+  int _currentPage = 0;
+  static const int _pageSize = 7;
 
   @override
   Widget build(BuildContext context) {
+    final reports = widget.reports;
+    final totalPages = (reports.length / _pageSize).ceil();
+    final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+    final startIndex = safePage * _pageSize;
+    final endIndex = (startIndex + _pageSize > reports.length)
+        ? reports.length
+        : startIndex + _pageSize;
+    final pageItems = reports.isEmpty ? <ReportSummary>[] : reports.sublist(startIndex, endIndex);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             const Expanded(child: SectionTitle('Recent Reports')),
-            TextButton(onPressed: onViewAll, child: const Text('View All History')),
+            if (reports.length > _pageSize) ...[
+              Text(
+                'Showing ${startIndex + 1}–$endIndex of ${reports.length}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.chevron_left, size: 20),
+                onPressed: safePage > 0
+                    ? () => setState(() => _currentPage = safePage - 1)
+                    : null,
+                tooltip: 'Previous batch',
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, size: 20),
+                onPressed: safePage < totalPages - 1
+                    ? () => setState(() => _currentPage = safePage + 1)
+                    : null,
+                tooltip: 'Next batch',
+              ),
+              const SizedBox(width: 12),
+            ],
+            TextButton(onPressed: widget.onViewAll, child: const Text('View All History')),
           ],
         ),
         const SizedBox(height: 8),
-        if (isBusy)
+        if (widget.isBusy)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 30),
             child: Center(child: CircularProgressIndicator()),
@@ -555,7 +705,7 @@ class _RecentReports extends StatelessWidget {
                 DataColumn(label: Text('DIAGNOSIS STATUS')),
               ],
               rows: [
-                for (final r in reports)
+                for (final r in pageItems)
                   DataRow(cells: [
                     DataCell(Text(r.reportDate)),
                     DataCell(Text(r.diagnosis ?? '—')),

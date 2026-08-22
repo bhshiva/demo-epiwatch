@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient_models.dart';
+import '../services/pdf_export.dart';
 import '../state/patient_records.dart';
 import '../theme/app_colors.dart';
 import '../widgets/section_card.dart';
@@ -290,7 +291,10 @@ class _HistoryPanel extends StatelessWidget {
               }
               return ListView.builder(
                 itemCount: state.history.length,
-                itemBuilder: (context, index) => _HistoryEntryTile(entry: state.history[index]),
+                itemBuilder: (context, index) => _HistoryEntryTile(
+                  patient: patient,
+                  entry: state.history[index],
+                ),
               );
             }),
           ),
@@ -301,59 +305,363 @@ class _HistoryPanel extends StatelessWidget {
 }
 
 class _HistoryEntryTile extends StatelessWidget {
+  final PatientSearchResult patient;
   final PatientHistoryEntry entry;
-  const _HistoryEntryTile({required this.entry});
+  const _HistoryEntryTile({required this.patient, required this.entry});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => showDialog(
+          context: context,
+          builder: (context) => _ReportDetailsDialog(patient: patient, entry: entry),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppColors.border)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(entry.reportDate,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(entry.diagnosis ?? '—',
+                              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                        ),
+                      ],
+                    ),
+                    if (entry.complaints != null && entry.complaints!.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      MutedText(entry.complaints!),
+                    ],
+                    if (entry.hasLabResult) ...[
+                      const SizedBox(height: 4),
+                      MutedText(
+                        [
+                          if (entry.pathogen != null && entry.pathogen!.isNotEmpty) entry.pathogen,
+                          if (entry.cultureResult != null && entry.cultureResult!.isNotEmpty)
+                            entry.cultureResult,
+                          if (entry.astResult != null && entry.astResult!.isNotEmpty)
+                            'AST: ${entry.astResult}',
+                        ].whereType<String>().join(' · '),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (entry.diagnosisStatus != null && entry.diagnosisStatus!.isNotEmpty)
+                StatusChip(label: entry.diagnosisStatus!),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _ReportDetailsDialog extends StatefulWidget {
+  final PatientSearchResult patient;
+  final PatientHistoryEntry entry;
+
+  const _ReportDetailsDialog({
+    required this.patient,
+    required this.entry,
+  });
+
+  @override
+  State<_ReportDetailsDialog> createState() => _ReportDetailsDialogState();
+}
+
+class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
+  bool _isExporting = false;
+
+  Future<void> _downloadPdf() async {
+    setState(() => _isExporting = true);
+    try {
+      await PdfExportService.exportReportPdf(
+        patient: widget.patient,
+        entry: widget.entry,
+      );
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final patient = widget.patient;
+    final entry = widget.entry;
+    final reportIdShort = entry.reportId.length > 8 ? entry.reportId.substring(0, 8) : entry.reportId;
+
+    return Dialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Web Header with Close Button
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentTeal.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.assignment_outlined, color: AppColors.accentTeal, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Clinical Visit Report',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Visit Date: ${entry.reportDate}  •  Report ID: #$reportIdShort',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (entry.diagnosisStatus != null && entry.diagnosisStatus!.isNotEmpty) ...[
+                    StatusChip(label: entry.diagnosisStatus!),
+                    const SizedBox(width: 12),
+                  ],
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, color: AppColors.textMuted, size: 20),
+                    tooltip: 'Close',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Divider(height: 1, color: AppColors.border),
+              const SizedBox(height: 20),
+
+              // Patient Summary Web Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4), // Refreshing teal-mint tint
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.person_outline, size: 16, color: AppColors.accentTeal),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'PATIENT INFORMATION',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.accentTeal,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      patient.fullName,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      patient.summary,
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                    ),
+                    if ((patient.facilityMrn != null && patient.facilityMrn!.isNotEmpty) ||
+                        (patient.abhaId != null && patient.abhaId!.isNotEmpty)) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          if (patient.facilityMrn != null && patient.facilityMrn!.isNotEmpty)
+                            Text('MRN: ${patient.facilityMrn}',
+                                style: const TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                          if (patient.facilityMrn != null &&
+                              patient.facilityMrn!.isNotEmpty &&
+                              patient.abhaId != null &&
+                              patient.abhaId!.isNotEmpty)
+                            const Text('  •  ', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                          if (patient.abhaId != null && patient.abhaId!.isNotEmpty)
+                            Text('ABHA ID: ${patient.abhaId}',
+                                style: const TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+
+              // Clinical Findings Section
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Clinical Findings & Diagnosis',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 12),
+                    _DetailRow(label: 'Diagnosis', value: entry.diagnosis ?? '—'),
+                    _DetailRow(label: 'Chief Complaints', value: entry.complaints ?? '—'),
+                  ],
+                ),
+              ),
+
+              // Lab & AMR Section (if present)
+              if (entry.hasLabResult) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Laboratory Results & Antimicrobial Resistance',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 12),
+                      if (entry.pathogen != null && entry.pathogen!.isNotEmpty)
+                        _DetailRow(label: 'Identified Pathogen', value: entry.pathogen!),
+                      if (entry.cultureResult != null && entry.cultureResult!.isNotEmpty)
+                        _DetailRow(label: 'Culture Result', value: entry.cultureResult!),
+                      if (entry.astResult != null && entry.astResult!.isNotEmpty)
+                        _DetailRow(label: 'AST Susceptibility', value: entry.astResult!),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+              const Divider(height: 1, color: AppColors.border),
+              const SizedBox(height: 20),
+
+              // Web Action Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Close'),
+                  ),
+                  const SizedBox(width: 14),
+                  FilledButton.icon(
+                    onPressed: _isExporting ? null : _downloadPdf,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.accentTeal,
+                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: _isExporting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                    label: Text(
+                      _isExporting ? 'Generating PDF...' : 'Download PDF',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DetailRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(entry.reportDate,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(entry.diagnosis ?? '—',
-                          style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
-                    ),
-                  ],
-                ),
-                if (entry.complaints != null && entry.complaints!.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  MutedText(entry.complaints!),
-                ],
-                if (entry.hasLabResult) ...[
-                  const SizedBox(height: 4),
-                  MutedText(
-                    [
-                      if (entry.pathogen != null && entry.pathogen!.isNotEmpty) entry.pathogen,
-                      if (entry.cultureResult != null && entry.cultureResult!.isNotEmpty)
-                        entry.cultureResult,
-                      if (entry.astResult != null && entry.astResult!.isNotEmpty)
-                        'AST: ${entry.astResult}',
-                    ].whereType<String>().join(' · '),
-                  ),
-                ],
-              ],
-            ),
+          SizedBox(
+            width: 160,
+            child: Text(label,
+                style: const TextStyle(fontSize: 13, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
           ),
-          const SizedBox(width: 8),
-          if (entry.diagnosisStatus != null && entry.diagnosisStatus!.isNotEmpty)
-            StatusChip(label: entry.diagnosisStatus!),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+          ),
         ],
       ),
     );

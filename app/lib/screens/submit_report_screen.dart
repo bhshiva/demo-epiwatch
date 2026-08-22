@@ -551,6 +551,7 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                   children: [
                     const _FieldLabel('District *'),
                     Autocomplete<String>(
+                      key: ValueKey(state.patientDistrict),
                       optionsBuilder: (textEditingValue) {
                         if (textEditingValue.text.isEmpty) {
                           return ClinicalCatalog.districts;

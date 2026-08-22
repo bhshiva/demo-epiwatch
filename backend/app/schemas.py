@@ -91,6 +91,8 @@ class ReportResponse(BaseModel):
     diagnosis: str | None
     diagnosis_status: str | None
     complaints: str | None
+    patient_name: str | None = None
+    age_gender: str | None = None
     created_at: datetime
 
     class Config:

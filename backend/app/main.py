@@ -12,7 +12,7 @@ cors_origins = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:8080,http://localhost:5000,http://127.0.0.1:8080,http://127.0.0.1:5000",
+        "*",
     ).split(",")
     if origin.strip()
 ]
@@ -20,6 +20,10 @@ cors_origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)master
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

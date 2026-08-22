@@ -132,12 +132,36 @@ def _decorate_report(db: Session, report: PatientReport) -> ReportResponse:
     """complaints is encrypted at rest; decrypt it for the response here
     rather than relying on FastAPI's automatic ORM-to-Pydantic pass-through,
     which would otherwise hand back raw ciphertext bytes."""
+    patient_name = None
+    age_gender = None
+    if report.patient_id:
+        patient = db.get(Patient, report.patient_id)
+        if patient:
+            identity = (
+                db.query(PatientIdentity)
+                .filter(PatientIdentity.patient_id == report.patient_id)
+                .first()
+            )
+            if identity and identity.full_name:
+                patient_name = decrypt_field(db, identity.full_name)
+
+            age_val = f"{patient.exact_age}" if patient.exact_age is not None else (patient.age_group or "")
+            sex_val = patient.sex[0].upper() if patient.sex else ""
+            if age_val and sex_val:
+                age_gender = f"{age_val} / {sex_val}"
+            elif age_val:
+                age_gender = age_val
+            elif sex_val:
+                age_gender = sex_val
+
     return ReportResponse(
         report_id=report.report_id,
         report_date=report.report_date,
         diagnosis=report.diagnosis,
         diagnosis_status=report.diagnosis_status,
         complaints=decrypt_field(db, report.complaints),
+        patient_name=patient_name,
+        age_gender=age_gender,
         created_at=report.created_at,
     )
 

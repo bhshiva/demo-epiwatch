@@ -25,6 +25,9 @@ class ReportSummary {
   final String? diagnosis;
   final String? diagnosisStatus;
   final String? complaints;
+  final String? patientName;
+  final String? ageGender;
+  final String? createdAt;
 
   const ReportSummary({
     required this.reportId,
@@ -32,6 +35,9 @@ class ReportSummary {
     this.diagnosis,
     this.diagnosisStatus,
     this.complaints,
+    this.patientName,
+    this.ageGender,
+    this.createdAt,
   });
 
   factory ReportSummary.fromJson(Map<String, dynamic> json) => ReportSummary(
@@ -40,6 +46,9 @@ class ReportSummary {
         diagnosis: json['diagnosis'] as String?,
         diagnosisStatus: json['diagnosis_status'] as String?,
         complaints: json['complaints'] as String?,
+        patientName: json['patient_name'] as String?,
+        ageGender: json['age_gender'] as String?,
+        createdAt: json['created_at'] as String?,
       );
 }
 
