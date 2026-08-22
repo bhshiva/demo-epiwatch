@@ -189,6 +189,18 @@ class SubmitReportState {
     final age = effectiveAge;
     return age == null ? '' : ClinicalCatalog.ageGroupFor(age);
   }
+  bool get isContactValid {
+    final trimmed = newPatientContact.trim();
+    if (trimmed.isEmpty) return true;
+    return RegExp(r'^\d{10}$').hasMatch(trimmed);
+  }
+
+  bool get isAgeValid {
+    final trimmed = patientAge.trim();
+    if (trimmed.isEmpty) return true;
+    final val = int.tryParse(trimmed);
+    return val != null && val >= 0 && val <= 120;
+  }
 
   /// What still blocks submission, in the same order/spirit as
   /// `MissingRequirements()` in the WPF ViewModel.
@@ -196,12 +208,12 @@ class SubmitReportState {
     final missing = <String>[];
     if (selectedPatient == null && !isRegisteringNewPatient) missing.add('Patient');
     if (isNewPatient && newPatientName.trim().isEmpty) missing.add('Patient Name');
+    if (isNewPatient && !isContactValid) missing.add('Valid 10-digit Contact Number');
 
-    if (derivedAgeGroup.isEmpty) missing.add('Age');
+    if (derivedAgeGroup.isEmpty || !isAgeValid) missing.add('Age');
     if (patientSex.trim().isEmpty) missing.add('Sex');
     if (patientDistrict.trim().isEmpty) missing.add('District');
     if (complaints.trim().isEmpty) missing.add('Chief Complaint');
-
     if (labPerformed && pathogen.trim().isEmpty) missing.add('Pathogen');
     if (labPerformed && _isOther(pathogen) && pathogenOther.trim().isEmpty) {
       missing.add('Pathogen detail');
@@ -575,6 +587,9 @@ class SubmitReportNotifier extends Notifier<SubmitReportState> {
       searchResults: const [],
       patientHistory: const [],
       clearSearchMessage: true,
+      patientAge: '',
+      patientSex: '',
+      patientDistrict: '',
     );
   }
 
