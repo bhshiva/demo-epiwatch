@@ -4,6 +4,7 @@ import '../models/report_models.dart';
 import '../services/api_exceptions.dart';
 import '../services/clinical_catalog.dart';
 import 'auth.dart';
+import 'dashboard.dart';
 
 bool _isOther(String? value) => value != null && value.toLowerCase() == 'other';
 
@@ -698,6 +699,7 @@ class SubmitReportNotifier extends Notifier<SubmitReportState> {
         isSubmitted: true,
         submittedSummary: 'Report recorded.',
       );
+      ref.read(dashboardProvider.notifier).load();
     } on DuplicatePatientException catch (e) {
       // A conflict is a decision for the clinician, never an automatic retry.
       final candidates = e.candidates

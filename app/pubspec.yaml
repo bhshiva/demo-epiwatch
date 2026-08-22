@@ -47,6 +47,8 @@ dependencies:
   # google_maps_flutter. Used by the Health Authority outbreak map.
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
+  pdf: ^3.13.0
+  printing: ^5.15.0
 
 dev_dependencies:
   flutter_test:
