@@ -25,7 +25,6 @@ from app.services.abha import (
 )
 
 router = APIRouter(prefix="/patients", tags=["patients"])
-
 # Health authority and admin have their own surfaces; identifiable patient
 # data is a doctor/lab clinical concern.
 clinical_user = require_role("doctor", "lab")

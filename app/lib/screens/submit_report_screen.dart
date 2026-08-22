@@ -206,16 +206,15 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
     final state = ref.watch(submitReportProvider);
     final notifier = ref.read(submitReportProvider.notifier);
 
-    // Keep controllers in sync with state changes that originate elsewhere
-    // (e.g. ABHA verify prefilling name/district).
+    // Keep controllers in sync with state changes (e.g. clearing search/patient,
+    // or ABHA verify prefilling name/district).
+    _syncController(_searchController, state.patientSearchText);
     _syncController(_ageController, state.patientAge);
     _syncController(_districtController, state.patientDistrict);
-    if (!state.hasSelectedPatient && state.isRegisteringNewPatient) {
-      _syncController(_nameController, state.newPatientName);
-      _syncController(_mrnController, state.newPatientMrn);
-      _syncController(_contactController, state.newPatientContact);
-      _syncController(_abhaController, state.newPatientAbha);
-    }
+    _syncController(_nameController, state.newPatientName);
+    _syncController(_mrnController, state.newPatientMrn);
+    _syncController(_contactController, state.newPatientContact);
+    _syncController(_abhaController, state.newPatientAbha);
 
     return SectionCard(
       child: Column(
@@ -409,7 +408,13 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                       const _FieldLabel('Contact Number'),
                       TextField(
                         controller: _contactController,
-                        decoration: const InputDecoration(isDense: true),
+                        maxLength: 20,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          counterText: '',
+                          errorText: !state.isContactValid ? 'Invalid contact number (must be 10 digits)' : null,
+                        ),
                         onChanged: notifier.setNewPatientContact,
                       ),
                     ],
@@ -515,7 +520,11 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                       controller: _ageController,
                       maxLength: 3,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(isDense: true, counterText: ''),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        counterText: '',
+                        errorText: !state.isAgeValid ? 'Invalid age (0–120 years)' : null,
+                      ),
                       onChanged: notifier.setPatientAge,
                     ),
                     Padding(
@@ -542,6 +551,7 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                   children: [
                     const _FieldLabel('District *'),
                     Autocomplete<String>(
+                      key: ValueKey(state.patientDistrict),
                       optionsBuilder: (textEditingValue) {
                         if (textEditingValue.text.isEmpty) {
                           return ClinicalCatalog.districts;
