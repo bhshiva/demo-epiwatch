@@ -1,4 +1,6 @@
+import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from fastapi import FastAPI
@@ -6,9 +8,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="EpiWatch API")
 
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "*",
+    ).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,6 +33,7 @@ from app.routers import (
     lab as lab_router,
     applications as applications_router,
     surveillance as surveillance_router,
+    admin_dashboard as admin_dashboard_router,
 )
 
 app.include_router(auth_router.router)
@@ -31,6 +43,7 @@ app.include_router(patients_router.router)
 app.include_router(lab_router.router)
 app.include_router(applications_router.router)
 app.include_router(surveillance_router.router)
+app.include_router(admin_dashboard_router.router)
 
 @app.get("/health")
 def health():

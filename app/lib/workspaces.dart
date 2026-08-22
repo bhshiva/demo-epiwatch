@@ -133,7 +133,7 @@ ShellScreen _adminWorkspace(String userName) => ShellScreen(
         NavDestination(
           key: 'applications',
           label: 'Applications',
-          icon: Icons.fact_check_outlined,
+          icon: Icons.admin_panel_settings_outlined,
           builder: (_) => AdminApplicationsScreen(userName: userName),
         ),
       ],
