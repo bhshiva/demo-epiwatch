@@ -24,6 +24,9 @@ venv/
 # Logs
 *.log
 
+# Local ML datasets and model artifacts
+/data/
+
 # Editors / OS
 .vs/
 .vscode/

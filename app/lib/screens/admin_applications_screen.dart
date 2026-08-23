@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 import '../models/application_models.dart';
 import '../state/auth.dart';
 
@@ -132,15 +134,31 @@ class _AdminApplicationsScreenState extends ConsumerState<AdminApplicationsScree
   final _stateCtrl = TextEditingController();
   final _latCtrl = TextEditingController();
   final _lngCtrl = TextEditingController();
+  final _mapController = MapController();
+
+  LatLng? get _currentLatLng {
+    final lat = double.tryParse(_latCtrl.text);
+    final lng = double.tryParse(_lngCtrl.text);
+    if (lat != null && lng != null) {
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return LatLng(lat, lng);
+      }
+    }
+    return null;
+  }
 
   @override
   void initState() {
     super.initState();
     _loadApplications();
+    _latCtrl.addListener(_onCoordinatesChanged);
+    _lngCtrl.addListener(_onCoordinatesChanged);
   }
 
   @override
   void dispose() {
+    _latCtrl.removeListener(_onCoordinatesChanged);
+    _lngCtrl.removeListener(_onCoordinatesChanged);
     _nameCtrl.dispose();
     _cityCtrl.dispose();
     _districtCtrl.dispose();
@@ -148,6 +166,18 @@ class _AdminApplicationsScreenState extends ConsumerState<AdminApplicationsScree
     _latCtrl.dispose();
     _lngCtrl.dispose();
     super.dispose();
+  }
+
+  void _onCoordinatesChanged() {
+    final pos = _currentLatLng;
+    if (pos != null) {
+      try {
+        _mapController.move(pos, _mapController.camera.zoom);
+      } catch (_) {
+        // Controller not initialized yet
+      }
+      setState(() {});
+    }
   }
 
   Future<void> _loadApplications() async {
@@ -725,7 +755,7 @@ class _AdminApplicationsScreenState extends ConsumerState<AdminApplicationsScree
                                 const Text('Facility Classification', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
                                 const SizedBox(height: 6),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedClassification,
+                                  initialValue: _selectedClassification,
                                   decoration: InputDecoration(
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -845,6 +875,60 @@ class _AdminApplicationsScreenState extends ConsumerState<AdminApplicationsScree
                           ),
                         ],
                       ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Select Location on Map',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF374151),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 220,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: FlutterMap(
+                            mapController: _mapController,
+                            options: MapOptions(
+                              initialCenter: const LatLng(22.9734, 78.6569), // India center
+                              initialZoom: 4.5,
+                              onTap: (tapPosition, point) {
+                                setState(() {
+                                  _latCtrl.text = point.latitude.toStringAsFixed(6);
+                                  _lngCtrl.text = point.longitude.toStringAsFixed(6);
+                                });
+                              },
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName: 'com.epiwatch.app',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  if (_currentLatLng != null)
+                                    Marker(
+                                      point: _currentLatLng!,
+                                      width: 40,
+                                      height: 40,
+                                      child: const Icon(
+                                        Icons.location_on,
+                                        color: Color(0xFFDC2626), // red pin
+                                        size: 32,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 24),
 
                       // Dark Green Register Node Button
@@ -897,7 +981,7 @@ class _AdminApplicationsScreenState extends ConsumerState<AdminApplicationsScree
                       height: 460,
                       child: ListView.separated(
                         itemCount: _facilityNodes.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                        separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF3F4F6)),
                         itemBuilder: (context, idx) {
                           final node = _facilityNodes[idx];
                           return Padding(

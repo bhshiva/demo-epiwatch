@@ -8,6 +8,8 @@ class SurveillanceDashboardState {
   final List<SurveillanceMetric> resistanceRates;
   final List<FacilityGeo> facilities;
   final List<DistrictSummary> districts;
+  final List<RiskScore> riskScores;
+  final List<Alert> alerts;
   final SurveillanceSummary summary;
   final bool isBusy;
   final String? error;
@@ -17,6 +19,8 @@ class SurveillanceDashboardState {
     this.resistanceRates = const [],
     this.facilities = const [],
     this.districts = const [],
+    this.riskScores = const [],
+    this.alerts = const [],
     this.summary = const SurveillanceSummary(facilitiesReporting: 0, reportsToday: 0),
     this.isBusy = false,
     this.error,
@@ -27,6 +31,8 @@ class SurveillanceDashboardState {
     List<SurveillanceMetric>? resistanceRates,
     List<FacilityGeo>? facilities,
     List<DistrictSummary>? districts,
+    List<RiskScore>? riskScores,
+    List<Alert>? alerts,
     SurveillanceSummary? summary,
     bool? isBusy,
     String? error,
@@ -36,6 +42,8 @@ class SurveillanceDashboardState {
         resistanceRates: resistanceRates ?? this.resistanceRates,
         facilities: facilities ?? this.facilities,
         districts: districts ?? this.districts,
+        riskScores: riskScores ?? this.riskScores,
+        alerts: alerts ?? this.alerts,
         summary: summary ?? this.summary,
         isBusy: isBusy ?? this.isBusy,
         error: error,
@@ -68,11 +76,15 @@ class SurveillanceDashboardNotifier extends Notifier<SurveillanceDashboardState>
       final facilities = await api.getFacilitiesGeo();
       final districts = await api.getDistrictSummaries();
       final summary = await api.getSurveillanceSummary();
+      final riskScores = await api.getRiskScores();
+      final alerts = await api.getAlerts();
       state = SurveillanceDashboardState(
         diseaseDaily: diseaseDaily,
         resistanceRates: resistanceRates,
         facilities: facilities,
         districts: districts,
+        riskScores: riskScores,
+        alerts: alerts,
         summary: summary,
       );
     } on ApiException catch (e) {

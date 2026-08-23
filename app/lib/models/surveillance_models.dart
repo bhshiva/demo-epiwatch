@@ -114,3 +114,57 @@ class DistrictSummary {
         recentCaseCount: json['recent_case_count'] as int,
       );
 }
+
+class RiskScore {
+  final String facilityId;
+  final String? organism;
+  final double compositeRiskScore;
+  final double? normEwma;
+  final double? normCusum;
+  final double? normIf;
+  final int? cultureCount;
+
+  const RiskScore({
+    required this.facilityId,
+    this.organism,
+    required this.compositeRiskScore,
+    this.normEwma,
+    this.normCusum,
+    this.normIf,
+    this.cultureCount,
+  });
+
+  factory RiskScore.fromJson(Map<String, dynamic> json) => RiskScore(
+        facilityId: json['facility_id'] as String,
+        organism: json['organism'] as String?,
+        compositeRiskScore: (json['composite_risk_score'] as num).toDouble(),
+        normEwma: (json['norm_ewma'] as num?)?.toDouble(),
+        normCusum: (json['norm_cusum'] as num?)?.toDouble(),
+        normIf: (json['norm_if'] as num?)?.toDouble(),
+        cultureCount: json['culture_count'] as int?,
+      );
+}
+
+class Alert {
+  final String facilityId;
+  final String? organism;
+  final String alertLevel;
+  final double compositeRiskScore;
+  final String? date;
+
+  const Alert({
+    required this.facilityId,
+    this.organism,
+    required this.alertLevel,
+    required this.compositeRiskScore,
+    this.date,
+  });
+
+  factory Alert.fromJson(Map<String, dynamic> json) => Alert(
+        facilityId: json['facility_id'] as String,
+        organism: json['organism'] as String?,
+        alertLevel: json['alert_level'] as String,
+        compositeRiskScore: (json['composite_risk_score'] as num).toDouble(),
+        date: json['date'] as String?,
+      );
+}

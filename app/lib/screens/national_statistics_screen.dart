@@ -49,8 +49,6 @@ class NationalStatisticsScreen extends StatelessWidget {
               icon: Icons.bug_report_outlined,
               section: NationalStatsData.vectorBorne,
             ),
-            const SizedBox(height: 18),
-            const _PilotSnapshotCard(),
           ],
         ),
       ),
@@ -200,54 +198,6 @@ class _FacilityBreakdownCard extends StatelessWidget {
                 ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PilotSnapshotCard extends StatelessWidget {
-  const _PilotSnapshotCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFDE68A)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.info_outline, size: 18, color: Color(0xFF92400E)),
-              const SizedBox(width: 8),
-              const Text('Platform Pilot Snapshot',
-                  style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF78350F))),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Text('⚠ Simulated data for demonstration — not a live national feed',
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF92400E))),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'This is a hackathon prototype: the counts elsewhere in this app (facilities '
-            'reporting, reports today, etc.) come from a handful of seeded test accounts, '
-            'not a national rollout. The real infrastructure and resistance figures above '
-            'are what this platform is designed to eventually operate against.',
-            style: TextStyle(fontSize: 12.5, color: Color(0xFF78350F)),
-          ),
         ],
       ),
     );

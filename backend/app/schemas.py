@@ -1,5 +1,7 @@
+from __future__ import annotations
 import uuid
 from datetime import date, datetime
+import datetime as dt
 from pydantic import BaseModel
 
 
@@ -377,6 +379,24 @@ class DistrictSummary(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class RiskScoreOut(BaseModel):
+    facility_id: str
+    organism: str | None = None
+    composite_risk_score: float
+    norm_ewma: float | None = None
+    norm_cusum: float | None = None
+    norm_if: float | None = None
+    culture_count: int | None = None
+
+
+class AlertOut(BaseModel):
+    facility_id: str
+    organism: str | None = None
+    alert_level: str  # "Watch", "Elevated", "Critical"
+    composite_risk_score: float
+    date: dt.date | None = None
 
 
 class ApplicationRejectRequest(BaseModel):

@@ -10,3 +10,6 @@ pytest
 httpx
 redis
 neo4j
+scikit-learn
+joblib
+matplotlib

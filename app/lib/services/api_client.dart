@@ -200,7 +200,7 @@ class ApiClient {
 
   Future<List<DiseaseDailyPoint>> getDiseaseDaily({String? diagnosis, int days = 30}) async {
     final res = await getList('/surveillance/disease-daily', query: {
-      if (diagnosis != null) 'diagnosis': diagnosis,
+      'diagnosis': ?diagnosis,
       'days': days,
     });
     return res.map((e) => DiseaseDailyPoint.fromJson(e as Map<String, dynamic>)).toList();
@@ -209,7 +209,7 @@ class ApiClient {
   Future<List<SurveillanceMetric>> getSurveillanceMetrics(String metricName, {String? facilityId}) async {
     final res = await getList('/surveillance/metrics', query: {
       'metric_name': metricName,
-      if (facilityId != null) 'facility_id': facilityId,
+      'facility_id': ?facilityId,
     });
     return res.map((e) => SurveillanceMetric.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -217,6 +217,16 @@ class ApiClient {
   Future<List<FacilityGeo>> getFacilitiesGeo() async {
     final res = await getList('/surveillance/facilities-geo');
     return res.map((e) => FacilityGeo.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<RiskScore>> getRiskScores() async {
+    final res = await getList('/surveillance/risk-scores');
+    return res.map((e) => RiskScore.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Alert>> getAlerts() async {
+    final res = await getList('/surveillance/alerts');
+    return res.map((e) => Alert.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   // --- Facility onboarding (Admin) ---
@@ -229,7 +239,7 @@ class ApiClient {
 
   Future<List<FacilityApplication>> getApplications({String? status}) async {
     final res = await getList('/admin/applications', query: {
-      if (status != null) 'status_filter': status,
+      'status_filter': ?status,
     });
     return res.map((e) => FacilityApplication.fromJson(e as Map<String, dynamic>)).toList();
   }

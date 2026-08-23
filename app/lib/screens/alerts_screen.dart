@@ -1,31 +1,69 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/surveillance_models.dart';
 import '../models/surveillance_demo_models.dart';
-import '../services/health_authority_demo_data.dart';
+import '../state/surveillance_dashboard.dart';
 import '../theme/app_colors.dart';
 import '../widgets/section_card.dart';
 
-/// Illustrative severity/confidence workflow -- no detection engine behind
-/// it yet (see ML_PLAN.md, kept local/uncommitted, and
-/// HealthAuthorityDemoData's doc comment). The review/assign/acknowledge
-/// workflow shape is real; the alerts themselves are not.
-class AlertsScreen extends StatefulWidget {
+/// Alerts screen that connects with the real-time ML risk engine output.
+class AlertsScreen extends ConsumerStatefulWidget {
   const AlertsScreen({super.key});
 
   @override
-  State<AlertsScreen> createState() => _AlertsScreenState();
+  ConsumerState<AlertsScreen> createState() => _AlertsScreenState();
 }
 
-class _AlertsScreenState extends State<AlertsScreen> {
+class _AlertsScreenState extends ConsumerState<AlertsScreen> {
   String? _selectedId;
+  final Map<String, String> _localStatuses = {};
 
   @override
   Widget build(BuildContext context) {
-    final alerts = HealthAuthorityDemoData.alerts;
+    final state = ref.watch(surveillanceDashboardProvider);
+    final facilities = state.facilities;
+
+    // Map backend Alert model to UI SurveillanceAlert model
+    final alerts = state.alerts.map((a) {
+      final alertId = "${a.facilityId}_${a.organism}";
+      final fac = facilities.firstWhere(
+        (f) => f.facilityId == a.facilityId,
+        orElse: () => FacilityGeo(
+          facilityId: a.facilityId,
+          name: 'Facility ${a.facilityId.substring(0, math.min(8, a.facilityId.length))}',
+          district: 'Unknown',
+          state: 'Unknown',
+          recentCaseCount: 0,
+        ),
+      );
+      
+      final severity = a.alertLevel.toUpperCase();
+      final status = _localStatuses[alertId] ?? 'Needs Review';
+      
+      return SurveillanceAlert(
+        id: alertId,
+        severity: severity == 'WATCH' ? 'MEDIUM' : (severity == 'ELEVATED' ? 'HIGH' : severity),
+        title: '${a.organism ?? 'Unknown Pathogen'} Anomaly',
+        region: '${fac.name} (${fac.district}, ${fac.state})',
+        detectedAgo: a.date ?? 'recently',
+        summary: 'Isolation Forest detected a composite risk score of ${a.compositeRiskScore.toStringAsFixed(2)} for ${a.organism ?? 'pathogen'} at ${fac.name}.',
+        confidencePercent: (a.compositeRiskScore * 100).toInt().clamp(0, 100),
+        status: status,
+        contributingSites: 1,
+      );
+    }).toList();
+
     final matching = alerts.where((a) => a.id == _selectedId);
     final selected = matching.isNotEmpty ? matching.first : (alerts.isNotEmpty ? alerts.first : null);
     final isWide = MediaQuery.sizeOf(context).width >= 1000;
 
-    final counts = <String, int>{};
+    final counts = <String, int>{
+      'CRITICAL': 0,
+      'HIGH': 0,
+      'MEDIUM': 0,
+      'RESOLVED': 0,
+    };
     for (final a in alerts) {
       counts[a.severity] = (counts[a.severity] ?? 0) + 1;
     }
@@ -50,7 +88,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     color: AppColors.statusMonitoring.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text('ILLUSTRATIVE — SEE ML_PLAN.MD',
+                  child: const Text('ML ALERTS',
                       style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
@@ -64,7 +102,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
             const SizedBox(height: 22),
             _SeverityRow(counts: counts),
             const SizedBox(height: 18),
-            if (isWide)
+            if (alerts.isEmpty)
+              const SectionCard(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(child: MutedText('No active alerts detected by the pipeline.')),
+                ),
+              )
+            else if (isWide)
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -75,6 +120,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
                         alerts: alerts,
                         selectedId: selected?.id,
                         onSelect: (id) => setState(() => _selectedId = id),
+                        onAssign: (id) => setState(() => _localStatuses[id] = 'Assigned'),
+                        onAcknowledge: (id) => setState(() => _localStatuses[id] = 'Acknowledged'),
                       ),
                     ),
                     const SizedBox(width: 18),
@@ -89,6 +136,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     alerts: alerts,
                     selectedId: selected?.id,
                     onSelect: (id) => setState(() => _selectedId = id),
+                    onAssign: (id) => setState(() => _localStatuses[id] = 'Assigned'),
+                    onAcknowledge: (id) => setState(() => _localStatuses[id] = 'Acknowledged'),
                   ),
                   const SizedBox(height: 18),
                   _AlertDetail(alert: selected),
@@ -154,7 +203,16 @@ class _AlertList extends StatelessWidget {
   final List<SurveillanceAlert> alerts;
   final String? selectedId;
   final ValueChanged<String> onSelect;
-  const _AlertList({required this.alerts, required this.selectedId, required this.onSelect});
+  final ValueChanged<String> onAssign;
+  final ValueChanged<String> onAcknowledge;
+
+  const _AlertList({
+    required this.alerts,
+    required this.selectedId,
+    required this.onSelect,
+    required this.onAssign,
+    required this.onAcknowledge,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -243,9 +301,9 @@ class _AlertList extends StatelessWidget {
                         const Spacer(),
                         TextButton(onPressed: () => onSelect(alert.id), child: const Text('Open')),
                         const SizedBox(width: 4),
-                        TextButton(onPressed: () {}, child: const Text('Assign')),
+                        TextButton(onPressed: () => onAssign(alert.id), child: const Text('Assign')),
                         const SizedBox(width: 4),
-                        FilledButton(onPressed: () {}, child: const Text('Ack')),
+                        FilledButton(onPressed: () => onAcknowledge(alert.id), child: const Text('Ack')),
                       ],
                     ),
                   ],
