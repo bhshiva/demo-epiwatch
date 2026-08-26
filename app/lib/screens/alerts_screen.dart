@@ -190,41 +190,39 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                 ),
               )
             else if (isWide)
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: _AlertList(
-                        alerts: filteredAlerts,
-                        selectedId: selected?.id,
-                        onSelect: (id) => setState(() => _selectedId = id),
-                        onAssign: (id) => _showAssignDialog(context, id),
-                        onAcknowledge: (id) {
-                          setState(() => _localStatuses[id] = 'Acknowledged');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Alert status updated to Acknowledged.')),
-                          );
-                        },
-                        onResolve: (id) {
-                          setState(() => _localStatuses[id] = 'Resolved');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Alert marked as Resolved.')),
-                          );
-                        },
-                      ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: _AlertList(
+                      alerts: filteredAlerts,
+                      selectedId: selected?.id,
+                      onSelect: (id) => setState(() => _selectedId = id),
+                      onAssign: (id) => _showAssignDialog(context, id),
+                      onAcknowledge: (id) {
+                        setState(() => _localStatuses[id] = 'Acknowledged');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Alert status updated to Acknowledged.')),
+                        );
+                      },
+                      onResolve: (id) {
+                        setState(() => _localStatuses[id] = 'Resolved');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Alert marked as Resolved.')),
+                        );
+                      },
                     ),
-                    const SizedBox(width: 18),
-                    Expanded(
-                      flex: 2,
-                      child: _AlertDetail(
-                        alert: selected,
-                        onInvestigate: (a) => _showInvestigationDialog(context, a),
-                      ),
+                  ),
+                  const SizedBox(width: 18),
+                  Expanded(
+                    flex: 2,
+                    child: _AlertDetail(
+                      alert: selected,
+                      onInvestigate: (a) => _showInvestigationDialog(context, a),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               )
             else
               Column(
@@ -261,35 +259,48 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
   }
 
   void _showAssignDialog(BuildContext context, String alertId) {
+    final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Assign Alert to Officer'),
-        content: const Column(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Assign Alert to Officer',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Designate an epidemiological surveillance officer to investigate this anomaly:'),
-            SizedBox(height: 14),
+            const Text(
+              'Designate an epidemiological surveillance officer to investigate this anomaly:',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
             TextField(
-              decoration: InputDecoration(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
                 labelText: 'Surveillance Officer Name',
                 hintText: 'e.g. Dr. Meera Iyer (IDSP Field Unit)',
                 border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person_outline, size: 20),
               ),
+              onSubmitted: (_) => _handleAssignSubmit(context, ctx, alertId, controller.text),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() => _localStatuses[alertId] = 'Assigned');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Alert assigned to field officer.')),
-              );
-            },
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF0F766E),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => _handleAssignSubmit(context, ctx, alertId, controller.text),
             child: const Text('Assign Officer'),
           ),
         ],
@@ -297,21 +308,111 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
     );
   }
 
+  void _handleAssignSubmit(
+    BuildContext parentContext,
+    BuildContext dialogCtx,
+    String alertId,
+    String officerName,
+  ) {
+    final name = officerName.trim().isEmpty ? 'Dr. Meera Iyer (IDSP Field Unit)' : officerName.trim();
+    Navigator.pop(dialogCtx);
+    setState(() => _localStatuses[alertId] = 'Assigned');
+
+    // Show Confirmation Success Popup Modal
+    showDialog(
+      context: parentContext,
+      builder: (successCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        content: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F766E).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF0F766E),
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Alert Successfully Assigned',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Assigned to $name',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0F766E),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'A field investigation task and dispatch notification have been issued to the surveillance team.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F766E),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () => Navigator.pop(successCtx),
+                  child: const Text('Acknowledge & Close'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showInvestigationDialog(BuildContext context, SurveillanceAlert alert) {
+    final directiveController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Initiate Investigation: ${alert.title}'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Initiate Investigation: ${alert.title}',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Location: ${alert.region}'),
-            const SizedBox(height: 6),
-            Text('Confidence: ${alert.confidencePercent}% (${alert.severity})'),
+            Text(
+              'Location: ${alert.region}  •  Confidence: ${alert.confidencePercent}% (${alert.severity})',
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
             const SizedBox(height: 14),
-            const TextField(
-              decoration: InputDecoration(
+            TextField(
+              controller: directiveController,
+              decoration: const InputDecoration(
                 labelText: 'Immediate Directives',
                 hintText: 'Initiate active case finding & collect confirmatory AST cultures',
                 border: OutlineInputBorder(),
@@ -323,11 +424,82 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF0F766E),
+              foregroundColor: Colors.white,
+            ),
             onPressed: () {
               Navigator.pop(ctx);
               setState(() => _localStatuses[alert.id] = 'Assigned');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Rapid response investigation initiated and alert escalated.')),
+              showDialog(
+                context: context,
+                builder: (successCtx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  content: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F766E).withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.local_shipping_outlined,
+                            color: Color(0xFF0F766E),
+                            size: 34,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Rapid Response Dispatched',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Investigation Active in ${alert.region}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0F766E),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Surveillance field teams have been deployed with automated case reporting protocols.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F766E),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onPressed: () => Navigator.pop(successCtx),
+                            child: const Text('Close'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               );
             },
             child: const Text('Dispatch Team'),

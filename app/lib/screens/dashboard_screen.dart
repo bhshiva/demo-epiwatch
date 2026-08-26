@@ -7,6 +7,7 @@ import '../state/dashboard.dart';
 import '../theme/app_colors.dart';
 import '../widgets/section_card.dart';
 import '../widgets/status_chip.dart';
+import '../widgets/trend_badge.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   final String doctorName;
@@ -38,13 +39,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardProvider);
-    final isWide = MediaQuery.sizeOf(context).width >= 1100;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isWide = screenWidth >= 1100;
+    final isMobile = screenWidth < 600;
 
     return RefreshIndicator(
       onRefresh: () => ref.read(dashboardProvider.notifier).load(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.all(isMobile ? 16 : 28),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1180),
           child: Column(
@@ -332,28 +335,43 @@ class _KpiRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = [
-      (summary.patientsToday.toString(), 'Patients Today', AppColors.accentBlue),
-      (summary.reportsSubmittedTotal.toString(), 'Reports Submitted', AppColors.accentBlue),
-      (summary.activeConditions.toString(), 'Active Conditions', AppColors.accentBlue),
-      (alertCount.toString(), 'Facility Alerts', AppColors.accentMint),
+      (summary.patientsToday.toString(), 'Patients Today', AppColors.accentBlue, 4.2, 1.5, false),
+      (summary.reportsSubmittedTotal.toString(), 'Reports Submitted', AppColors.accentBlue, 12.4, 8.1, false),
+      (summary.activeConditions.toString(), 'Active Conditions', AppColors.accentBlue, -0.8, 0.0, true),
+      (alertCount.toString(), 'Facility Alerts', AppColors.accentMint, 3.8, -1.2, true),
     ];
     return LayoutBuilder(builder: (context, constraints) {
-      final perRow = constraints.maxWidth >= 700 ? 4 : 2;
+      final isMobile = constraints.maxWidth < 600;
+      final isTablet = constraints.maxWidth >= 600 && constraints.maxWidth < 950;
+      final perRow = isMobile ? 1 : (isTablet ? 2 : 4);
+
       return Wrap(
-        spacing: 18,
-        runSpacing: 18,
+        spacing: 16,
+        runSpacing: 16,
         children: [
           for (final t in tiles)
             SizedBox(
-              width: (constraints.maxWidth - 18 * (perRow - 1)) / perRow,
+              width: (constraints.maxWidth - 16 * (perRow - 1)) / perRow,
               child: SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(t.$1,
-                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: t.$3)),
-                    const SizedBox(height: 6),
+                    Text(
+                      t.$1,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w700,
+                        color: t.$3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     MutedText(t.$2),
+                    const SizedBox(height: 10),
+                    DualTrendRow(
+                      delta7d: t.$4,
+                      delta30d: t.$5,
+                      higherIsWorse: t.$6,
+                    ),
                   ],
                 ),
               ),
