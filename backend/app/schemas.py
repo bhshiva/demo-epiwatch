@@ -72,6 +72,10 @@ class ReportCreateRequest(BaseModel):
     patient_sex: str
     patient_district: str
     report_date: date
+    # BCP-47 language code of the UI at submission time (e.g. "hi", "mr").
+    # Passed to the translation layer so GoogleTranslator uses the exact
+    # source language rather than relying on auto-detect.
+    source_language: str = "auto"
     complaints: str | None = None
     medical_history: str | None = None
     symptoms: list[str] = []

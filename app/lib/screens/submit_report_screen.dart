@@ -9,6 +9,8 @@ import '../theme/app_colors.dart';
 import '../widgets/intelligence_audit_banner.dart';
 import '../widgets/ocr_ingestion_card.dart';
 import '../widgets/section_card.dart';
+import '../services/app_strings.dart';
+import '../state/locale.dart';
 import '../widgets/status_chip.dart';
 
 /// Submit Report screen: the doctor's clinical-report form, ported from
@@ -31,6 +33,7 @@ class _SubmitReportScreenState extends ConsumerState<SubmitReportScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(submitReportProvider);
     final notifier = ref.read(submitReportProvider.notifier);
+    final lang = ref.watch(localeProvider);
 
     if (state.isSubmitted) {
       return _SuccessView(state: state);
@@ -46,17 +49,17 @@ class _SubmitReportScreenState extends ConsumerState<SubmitReportScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Submit Clinical Report',
-                    style: TextStyle(
+                  Text(
+                    AppStrings.get('submit_report', lang),
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 7),
-                  const MutedText(
-                    'Reports are de-identified before aggregation. Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies so data is comparable across facilities.',
+                  MutedText(
+                    AppStrings.get('submit_report_sub', lang),
                   ),
                   const SizedBox(height: 20),
                   OcrIngestionCard(
@@ -98,16 +101,41 @@ class _FieldLabel extends StatelessWidget {
   const _FieldLabel(this.text);
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Text(
-      text,
-      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-    ),
-  );
+  Widget build(BuildContext context) => Consumer(
+        builder: (context, ref, _) {
+          final lang = ref.watch(localeProvider);
+          final keyMap = {
+            'Chief Complaint *': 'complaints',
+            'Chief Complaints': 'complaints',
+            'Medical History': 'medical_history',
+            'Full Name *': 'full_name',
+            'Full Name': 'full_name',
+            'Age (years) *': 'age',
+            'District *': 'district',
+            'Sex *': 'gender',
+            'Male': 'male',
+            'Female': 'female',
+            'Other': 'other',
+            'Search': 'search',
+            'Register new patient': 'register_new_patient',
+            'Patient Context': 'patient_context',
+            'Patient': 'patient',
+          };
+          final translationKey = keyMap[text] ?? text;
+          final translatedText = AppStrings.get(translationKey, lang);
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              translatedText,
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+          );
+        },
+      );
 }
 
-class _SegmentGroup extends StatelessWidget {
+class _SegmentGroup extends ConsumerWidget {
   final List<String> options;
   final String selected;
   final ValueChanged<String> onSelect;
@@ -119,15 +147,36 @@ class _SegmentGroup extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(localeProvider);
+
+    String getLabel(String val) {
+      final keyMap = {
+        'Suspected': 'status_suspected',
+        'Probable': 'status_probable',
+        'Confirmed': 'status_confirmed',
+        'Unknown': 'cat_unknown',
+        'Community-acquired': 'cat_community_acquired',
+        'Hospital-acquired': 'cat_hospital_acquired',
+        'Healthcare-associated': 'cat_healthcare_associated',
+        'Resistant': 'ast_resistant',
+        'Susceptible': 'ast_susceptible',
+        'Intermediate': 'ast_intermediate',
+        'Not tested': 'ast_not_tested',
+      };
+      final key = keyMap[val] ?? val.toLowerCase().replaceAll(' ', '_');
+      final res = AppStrings.get(key, lang);
+      return res != key ? res : val;
+    }
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         for (final option in options)
           _SegmentChip(
-            label: option,
-            isSelected: option == selected,
+            label: getLabel(option),
+            isSelected: option.toLowerCase() == selected.toLowerCase(),
             onTap: () => onSelect(option),
           ),
       ],
@@ -162,15 +211,28 @@ class _SegmentChip extends StatelessWidget {
               color: isSelected ? AppColors.accentTeal : AppColors.border,
             ),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: isSelected
-                  ? AppColors.accentGreen
-                  : AppColors.textSecondary,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            ),
+          child: Consumer(
+            builder: (context, ref, _) {
+              final lang = ref.watch(localeProvider);
+              final keyMap = {
+                'Male': 'male',
+                'Female': 'female',
+                'Other': 'other',
+              };
+              final translationKey = keyMap[label] ?? label.toLowerCase();
+              final translatedText = AppStrings.get(translationKey, lang);
+
+              return Text(
+                translatedText,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isSelected
+                      ? AppColors.accentGreen
+                      : AppColors.textSecondary,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -202,9 +264,13 @@ class _OtherField extends ConsumerWidget {
             onChanged: onChanged,
             decoration: const InputDecoration(isDense: true),
           ),
-          const Padding(
-            padding: EdgeInsets.only(top: 5),
-            child: MutedText('Please specify'),
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Consumer(
+              builder: (context, ref, _) => MutedText(
+                AppStrings.get('please_specify', ref.watch(localeProvider)),
+              ),
+            ),
           ),
         ],
       ),
@@ -292,7 +358,7 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                           height: 14,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Search'),
+                      : Text(AppStrings.get('search', ref.watch(localeProvider))),
                 ),
               ],
             ),
@@ -327,7 +393,7 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                   _nameController.text = state.patientSearchText.trim();
                   notifier.startNewPatient();
                 },
-                child: const Text('Register new patient'),
+                child: Text(AppStrings.get('register_new_patient', ref.watch(localeProvider))),
               ),
             ),
           ],
@@ -1019,21 +1085,22 @@ class _ClinicalSummarySectionState
   Widget build(BuildContext context) {
     final state = ref.watch(submitReportProvider);
     final notifier = ref.read(submitReportProvider.notifier);
+    final lang = ref.watch(localeProvider);
 
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle('Clinical Summary'),
+          SectionTitle(AppStrings.get('clinical_summary', lang)),
           const SizedBox(height: 16),
-          const _FieldLabel('Chief Complaint *'),
+          _FieldLabel('${AppStrings.get('complaints', lang)} *'),
           TextField(
             controller: _complaintsController,
             decoration: const InputDecoration(isDense: true),
             onChanged: notifier.setComplaints,
           ),
           const SizedBox(height: 16),
-          const _FieldLabel('Presenting Symptoms'),
+          _FieldLabel(AppStrings.get('syymptoms', lang)),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1113,7 +1180,7 @@ class _ClinicalSummarySectionState
             ),
           ],
           const SizedBox(height: 16),
-          const _FieldLabel('Relevant Medical History'),
+          _FieldLabel(AppStrings.get('relevant_medical_history', lang)),
           TextField(
             controller: _historyController,
             minLines: 3,
@@ -1194,28 +1261,29 @@ class _DiagnosisSectionState extends ConsumerState<_DiagnosisSection> {
   Widget build(BuildContext context) {
     final state = ref.watch(submitReportProvider);
     final notifier = ref.read(submitReportProvider.notifier);
+    final lang = ref.watch(localeProvider);
 
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle('Diagnosis'),
+          SectionTitle(AppStrings.get('diagnosis', lang)),
           const SizedBox(height: 16),
-          const _FieldLabel('Working Diagnosis'),
+          _FieldLabel(AppStrings.get('working_diagnosis', lang)),
           TextField(
             controller: _diagnosisController,
             decoration: const InputDecoration(isDense: true),
             onChanged: notifier.setDiagnosis,
           ),
           const SizedBox(height: 16),
-          const _FieldLabel('Diagnosis Certainty'),
+          _FieldLabel(AppStrings.get('diagnosis_certainty', lang)),
           _SegmentGroup(
             options: ClinicalCatalog.diagnosisStatuses,
             selected: state.diagnosisStatus,
             onSelect: notifier.setDiagnosisStatus,
           ),
           const SizedBox(height: 16),
-          const _FieldLabel('Treatment Provided'),
+          _FieldLabel(AppStrings.get('treatment_provided', lang)),
           TextField(
             controller: _treatmentController,
             minLines: 3,
@@ -1253,19 +1321,20 @@ class _AcornSectionState extends ConsumerState<_AcornSection> {
   Widget build(BuildContext context) {
     final state = ref.watch(submitReportProvider);
     final notifier = ref.read(submitReportProvider.notifier);
+    final lang = ref.watch(localeProvider);
 
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle('Clinical Context'),
-          const Padding(
-            padding: EdgeInsets.only(top: 4, bottom: 16),
+          SectionTitle(AppStrings.get('clinical_context', lang)),
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 16),
             child: MutedText(
-              'Follows ACORN, the clinically-oriented AMR surveillance protocol. These fields let signals be analysed by presentation and acquisition setting, not just diagnosis text.',
+              AppStrings.get('acorn_description', lang),
             ),
           ),
-          const _FieldLabel('Infection Syndrome'),
+          _FieldLabel(AppStrings.get('infection_syndrome', lang)),
           _Dropdown(
             options: ClinicalCatalog.infectionSyndromes,
             value: state.infectionSyndrome,
@@ -1277,14 +1346,14 @@ class _AcornSectionState extends ConsumerState<_AcornSection> {
             onChanged: notifier.setInfectionSyndromeOther,
           ),
           const SizedBox(height: 16),
-          const _FieldLabel('Infection Origin'),
+          _FieldLabel(AppStrings.get('infection_origin', lang)),
           _SegmentGroup(
             options: ClinicalCatalog.infectionOrigins,
             selected: state.infectionOrigin,
             onSelect: notifier.setInfectionOrigin,
           ),
           const SizedBox(height: 10),
-          const _FieldLabel('Patient Outcome'),
+          _FieldLabel(AppStrings.get('outcome', lang)),
           _Dropdown(
             options: ClinicalCatalog.patientOutcomes,
             value: state.patientOutcome,
@@ -1295,10 +1364,10 @@ class _AcornSectionState extends ConsumerState<_AcornSection> {
             value: state.patientOutcomeOther,
             onChanged: notifier.setPatientOutcomeOther,
           ),
-          const Padding(
-            padding: EdgeInsets.only(top: 5),
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
             child: MutedText(
-              'Leave as "Not yet known" at the point of care; ACORN records outcome at discharge and day 28.',
+              AppStrings.get('acorn_outcome_note', lang),
             ),
           ),
         ],
@@ -1307,7 +1376,7 @@ class _AcornSectionState extends ConsumerState<_AcornSection> {
   }
 }
 
-class _Dropdown extends StatelessWidget {
+class _Dropdown extends ConsumerWidget {
   final List<String> options;
   final String value;
   final ValueChanged<String> onChanged;
@@ -1319,15 +1388,36 @@ class _Dropdown extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(localeProvider);
     final items = {...options, if (value.isNotEmpty) value}.toList();
+
+    String getLabel(String val) {
+      final keyMap = {
+        'Community-acquired': 'cat_community_acquired',
+        'Hospital-acquired': 'cat_hospital_acquired',
+        'Healthcare-associated': 'cat_healthcare_associated',
+        'Unknown': 'cat_unknown',
+        'Not yet known': 'cat_not_yet_known',
+        'Recovered / Improving': 'cat_recovered_improving',
+        'Referred / Transferred': 'cat_referred_transferred',
+        'Admitted - under treatment': 'cat_admitted_under_treatment',
+        'Died': 'cat_died',
+        'Lost to follow-up': 'cat_lost_to_follow_up',
+        'Other': 'other',
+      };
+      final key = keyMap[val] ?? val.toLowerCase().replaceAll(' ', '_');
+      final res = AppStrings.get(key, lang);
+      return res != key ? res : val;
+    }
+
     return DropdownButtonFormField<String>(
       initialValue: value.isEmpty ? null : value,
       isExpanded: true,
       decoration: const InputDecoration(isDense: true),
       items: [
         for (final option in items)
-          DropdownMenuItem(value: option, child: Text(option)),
+          DropdownMenuItem(value: option, child: Text(getLabel(option))),
       ],
       onChanged: (v) {
         if (v != null) onChanged(v);
@@ -1364,6 +1454,7 @@ class _LabSectionState extends ConsumerState<_LabSection> {
   Widget build(BuildContext context) {
     final state = ref.watch(submitReportProvider);
     final notifier = ref.read(submitReportProvider.notifier);
+    final lang = ref.watch(localeProvider);
 
     return SectionCard(
       child: Column(
@@ -1372,15 +1463,15 @@ class _LabSectionState extends ConsumerState<_LabSection> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SectionTitle('Laboratory & AMR'),
+                    SectionTitle(AppStrings.get('laboratory_and_amr', lang)),
                     Padding(
-                      padding: EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.only(top: 4),
                       child: MutedText(
-                        'Culture and susceptibility data feeds antimicrobial resistance surveillance.',
+                        AppStrings.get('lab_description', lang),
                       ),
                     ),
                   ],
@@ -1389,9 +1480,9 @@ class _LabSectionState extends ConsumerState<_LabSection> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Lab performed',
-                    style: TextStyle(
+                  Text(
+                    AppStrings.get('lab_performed', lang),
+                    style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
                     ),
@@ -1416,7 +1507,7 @@ class _LabSectionState extends ConsumerState<_LabSection> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _FieldLabel('Specimen Type'),
+                      _FieldLabel(AppStrings.get('specimen_type', lang)),
                       _Dropdown(
                         options: ClinicalCatalog.specimenTypes,
                         value: state.specimenType,
@@ -1436,7 +1527,7 @@ class _LabSectionState extends ConsumerState<_LabSection> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _FieldLabel('Culture Result'),
+                      _FieldLabel(AppStrings.get('culture_result', lang)),
                       _Dropdown(
                         options: ClinicalCatalog.cultureResults,
                         value: state.cultureResult,
@@ -1452,9 +1543,9 @@ class _LabSectionState extends ConsumerState<_LabSection> {
                 ),
               ],
             ),
-            const Padding(
-              padding: EdgeInsets.only(top: 16, bottom: 6),
-              child: _FieldLabel('Identified Pathogen *'),
+            Padding(
+              padding: const EdgeInsets.only(top: 16, bottom: 6),
+              child: _FieldLabel(AppStrings.get('identified_pathogen', lang)),
             ),
             _Dropdown(
               options: ClinicalCatalog.pathogens,
@@ -1466,13 +1557,13 @@ class _LabSectionState extends ConsumerState<_LabSection> {
               value: state.pathogenOther,
               onChanged: notifier.setPathogenOther,
             ),
-            const Padding(
-              padding: EdgeInsets.only(top: 5),
-              child: MutedText('ICMR-AMRSN priority pathogen panel'),
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: MutedText(AppStrings.get('pathogen_panel_note', lang)),
             ),
-            const Padding(
-              padding: EdgeInsets.only(top: 16, bottom: 6),
-              child: _FieldLabel('Antibiotic Tested'),
+            Padding(
+              padding: const EdgeInsets.only(top: 16, bottom: 6),
+              child: _FieldLabel(AppStrings.get('antibiotic_tested', lang)),
             ),
             Autocomplete<String>(
               optionsBuilder: (v) => v.text.isEmpty
@@ -1490,9 +1581,9 @@ class _LabSectionState extends ConsumerState<_LabSection> {
                 );
               },
             ),
-            const Padding(
-              padding: EdgeInsets.only(top: 16, bottom: 6),
-              child: _FieldLabel('Susceptibility Result (AST)'),
+            Padding(
+              padding: const EdgeInsets.only(top: 16, bottom: 6),
+              child: _FieldLabel(AppStrings.get('ast_result_label', lang)),
             ),
             _SegmentGroup(
               options: ClinicalCatalog.astResults,
@@ -1511,21 +1602,21 @@ class _LabSectionState extends ConsumerState<_LabSection> {
                   border: Border.all(color: const Color(0xFFFECACA)),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '⚠  Resistant isolate — stewardship note',
-                      style: TextStyle(
+                      AppStrings.get('resistant_warning_title', lang),
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF991B1B),
                       ),
                     ),
-                    SizedBox(height: 5),
+                    const SizedBox(height: 5),
                     Text(
-                      'Prefer culture-guided therapy over empirical broad-spectrum cover, and record any alternative susceptible agent in Treatment. This result will be flagged to AMR surveillance.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
+                      AppStrings.get('resistant_warning_detail', lang),
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
                     ),
                   ],
                 ),
@@ -1546,6 +1637,7 @@ class _PrescriptionsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(submitReportProvider);
     final notifier = ref.read(submitReportProvider.notifier);
+    final lang = ref.watch(localeProvider);
 
     return SectionCard(
       child: Column(
@@ -1554,15 +1646,15 @@ class _PrescriptionsSection extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SectionTitle('Antimicrobial Prescriptions'),
+                    SectionTitle(AppStrings.get('antimicrobial_prescriptions', lang)),
                     Padding(
-                      padding: EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.only(top: 4),
                       child: MutedText(
-                        'Prescribing patterns are analysed alongside resistance trends.',
+                        AppStrings.get('prescriptions_description', lang),
                       ),
                     ),
                   ],
@@ -1571,9 +1663,9 @@ class _PrescriptionsSection extends ConsumerWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Antibiotic prescribed',
-                    style: TextStyle(
+                  Text(
+                    AppStrings.get('antibiotic_prescribed', lang),
+                    style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
                     ),
@@ -1597,7 +1689,7 @@ class _PrescriptionsSection extends ConsumerWidget {
               ),
             OutlinedButton(
               onPressed: notifier.addPrescription,
-              child: const Text('+  Add antibiotic'),
+              child: Text(AppStrings.get('add_antibiotic', lang)),
             ),
           ],
         ],
@@ -1606,7 +1698,7 @@ class _PrescriptionsSection extends ConsumerWidget {
   }
 }
 
-class _PrescriptionRow extends StatefulWidget {
+class _PrescriptionRow extends ConsumerStatefulWidget {
   final int index;
   final PrescriptionDraft draft;
   final SubmitReportNotifier notifier;
@@ -1618,10 +1710,10 @@ class _PrescriptionRow extends StatefulWidget {
   });
 
   @override
-  State<_PrescriptionRow> createState() => _PrescriptionRowState();
+  ConsumerState<_PrescriptionRow> createState() => _PrescriptionRowState();
 }
 
-class _PrescriptionRowState extends State<_PrescriptionRow> {
+class _PrescriptionRowState extends ConsumerState<_PrescriptionRow> {
   late final TextEditingController _drug;
   late final TextEditingController _dosage;
   late final TextEditingController _duration;
@@ -1655,6 +1747,8 @@ class _PrescriptionRowState extends State<_PrescriptionRow> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(localeProvider);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.only(bottom: 14),
@@ -1669,7 +1763,7 @@ class _PrescriptionRowState extends State<_PrescriptionRow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _FieldLabel('Drug'),
+                _FieldLabel(AppStrings.get('drug', lang)),
                 TextField(
                   controller: _drug,
                   decoration: const InputDecoration(isDense: true),
@@ -1684,7 +1778,7 @@ class _PrescriptionRowState extends State<_PrescriptionRow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _FieldLabel('Dosage'),
+                _FieldLabel(AppStrings.get('dosage', lang)),
                 TextField(
                   controller: _dosage,
                   decoration: const InputDecoration(isDense: true),
@@ -1699,7 +1793,7 @@ class _PrescriptionRowState extends State<_PrescriptionRow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _FieldLabel('Duration'),
+                _FieldLabel(AppStrings.get('duration', lang)),
                 TextField(
                   controller: _duration,
                   decoration: const InputDecoration(isDense: true),
@@ -1727,6 +1821,7 @@ class _SubmitBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(submitReportProvider.notifier);
+    final lang = ref.watch(localeProvider);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
@@ -1738,9 +1833,39 @@ class _SubmitBar extends ConsumerWidget {
         children: [
           FilledButton(
             onPressed: state.canSubmit ? () => notifier.submit() : null,
-            child: Text(state.isBusy ? 'Submitting…' : 'Submit Report'),
+            child: Text(state.isBusy ? AppStrings.get('submitting', lang) : AppStrings.get('submit_report_btn', lang)),
           ),
-          SizedBox(width: 320, child: MutedText(state.validationSummary)),
+          const SizedBox(width: 14),
+          SizedBox(
+            width: 320,
+            child: Builder(
+              builder: (context) {
+                final missing = state.missingRequirements;
+                if (missing.isEmpty) return const SizedBox.shrink();
+                final reqText = AppStrings.get('required', lang);
+                final missingFields = missing.map((e) {
+                  final keyMap = {
+                    'patient': 'patient',
+                    'patient name': 'patient_name',
+                    'valid 10-digit contact number': 'valid_contact',
+                    'age': 'age',
+                    'sex': 'gender',
+                    'district': 'district',
+                    'chief complaint': 'complaints',
+                    'pathogen': 'pathogen',
+                    'pathogen detail': 'pathogen_detail',
+                    'specimen detail': 'specimen_detail',
+                    'culture detail': 'culture_detail',
+                    'syndrome detail': 'syndrome_detail',
+                    'outcome detail': 'outcome_detail',
+                  };
+                  final key = keyMap[e.toLowerCase()] ?? e.toLowerCase().replaceAll(' ', '_');
+                  return AppStrings.get(key, lang);
+                }).join(', ');
+                return MutedText('$reqText: $missingFields');
+              },
+            ),
+          ),
           if (state.errorMessage != null)
             Expanded(
               child: Text(
@@ -1767,6 +1892,7 @@ class _SuccessView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(submitReportProvider.notifier);
+    final lang = ref.watch(localeProvider);
 
     return Center(
       child: SectionCard(
@@ -1790,9 +1916,9 @@ class _SuccessView extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
-                'Report Submitted',
-                style: TextStyle(
+              Text(
+                AppStrings.get('report_submitted', lang),
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
@@ -1801,8 +1927,8 @@ class _SuccessView extends ConsumerWidget {
               const SizedBox(height: 10),
               MutedText(state.submittedSummary, textAlign: TextAlign.center),
               const SizedBox(height: 4),
-              const MutedText(
-                'This report has been de-identified and added to the surveillance pool.',
+              MutedText(
+                AppStrings.get('report_deidentified_note', lang),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -1811,7 +1937,7 @@ class _SuccessView extends ConsumerWidget {
                   notifier.submitAnother();
                   ShellNav.of(context).navigateTo('dashboard');
                 },
-                child: const Text('Submit Another Report'),
+                child: Text(AppStrings.get('submit_another_report', lang)),
               ),
             ],
           ),

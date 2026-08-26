@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 abstract final class AppTheme {
+  static const _fontFallbacks = [
+    'Noto Sans Devanagari',
+    'Noto Sans Tamil',
+    'Noto Sans Telugu',
+    'Noto Sans Bengali',
+    'sans-serif',
+  ];
+
   static ThemeData build() {
     final base = ThemeData.light(useMaterial3: true);
 
@@ -15,7 +24,7 @@ abstract final class AppTheme {
         onPrimary: Colors.white,
         onSurface: AppColors.textPrimary,
       ),
-      textTheme: base.textTheme.apply(
+      textTheme: GoogleFonts.notoSansTextTheme(base.textTheme).apply(
         bodyColor: AppColors.textPrimary,
         displayColor: AppColors.textPrimary,
       ),
@@ -38,7 +47,10 @@ abstract final class AppTheme {
         focusedBorder: _fieldBorder(AppColors.accentTeal, width: 1.6),
         errorBorder: _fieldBorder(AppColors.statusCritical),
         focusedErrorBorder: _fieldBorder(AppColors.statusCritical, width: 1.6),
-        labelStyle: const TextStyle(color: AppColors.textSecondary),
+        labelStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontFamilyFallback: _fontFallbacks,
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -46,7 +58,11 @@ abstract final class AppTheme {
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            fontFamilyFallback: _fontFallbacks,
+          ),
         ),
       ),
       dividerTheme: const DividerThemeData(color: AppColors.border, thickness: 1, space: 1),

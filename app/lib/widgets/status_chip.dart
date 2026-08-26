@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/app_strings.dart';
+import '../state/locale.dart';
 import '../theme/app_colors.dart';
 
 /// The bg/fg pair for a status label, ported from StatusBrushConverter in the
@@ -38,13 +41,32 @@ class StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = _statusPalette[label.toLowerCase()] ?? _fallback;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(color: palette.bg, borderRadius: BorderRadius.circular(4)),
-      child: Text(
-        label,
-        style: TextStyle(color: palette.fg, fontSize: 11, fontWeight: FontWeight.w600),
-      ),
+    return Consumer(
+      builder: (context, ref, _) {
+        final lang = ref.watch(localeProvider);
+        final keyMap = {
+          'suspected': 'status_suspected',
+          'probable': 'status_probable',
+          'confirmed': 'status_confirmed',
+          'normal': 'status_normal',
+          'elevated': 'status_elevated',
+          'monitoring': 'status_monitoring',
+          'critical': 'status_critical',
+          'resolved': 'status_resolved',
+          'high': 'status_high',
+        };
+        final translationKey = keyMap[label.toLowerCase()] ?? label;
+        final translatedLabel = AppStrings.get(translationKey, lang);
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+          decoration: BoxDecoration(color: palette.bg, borderRadius: BorderRadius.circular(4)),
+          child: Text(
+            translatedLabel,
+            style: TextStyle(color: palette.fg, fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        );
+      },
     );
   }
 }

@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient_models.dart';
+import '../services/app_strings.dart';
 import '../services/pdf_export.dart';
+import '../state/locale.dart';
 import '../state/patient_records.dart';
 import '../theme/app_colors.dart';
 import '../widgets/section_card.dart';
@@ -24,7 +26,8 @@ class PatientRecordsScreen extends ConsumerStatefulWidget {
   const PatientRecordsScreen({super.key});
 
   @override
-  ConsumerState<PatientRecordsScreen> createState() => _PatientRecordsScreenState();
+  ConsumerState<PatientRecordsScreen> createState() =>
+      _PatientRecordsScreenState();
 }
 
 class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
@@ -63,12 +66,18 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Patient Records',
-                style: TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text(
+              AppStrings.get('patient_records', ref.watch(localeProvider)),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
             const SizedBox(height: 7),
-            const MutedText(
-                'Search patients by name, ABHA number, phone or facility MRN, then review their visit history.'),
+            MutedText(
+              AppStrings.get('patient_records_sub', ref.watch(localeProvider)),
+            ),
             const SizedBox(height: 18),
             SectionCard(
               child: Column(
@@ -79,8 +88,11 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
                       Expanded(
                         child: TextField(
                           controller: _controller,
-                          decoration: const InputDecoration(
-                            hintText: 'Search patients...',
+                          decoration: InputDecoration(
+                            hintText: AppStrings.get(
+                              'search_patients_placeholder',
+                              ref.watch(localeProvider),
+                            ),
                             isDense: true,
                           ),
                           onChanged: _onChanged,
@@ -93,7 +105,9 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
                           _debounce?.cancel();
                           ref.read(patientRecordsProvider.notifier).search();
                         },
-                        child: const Text('Search'),
+                        child: Text(
+                          AppStrings.get('search', ref.watch(localeProvider)),
+                        ),
                       ),
                     ],
                   ),
@@ -113,7 +127,10 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
                     )
                   : Column(
                       children: [
-                        SizedBox(height: 320, child: _ResultsPanel(state: state)),
+                        SizedBox(
+                          height: 320,
+                          child: _ResultsPanel(state: state),
+                        ),
                         const SizedBox(height: 18),
                         Expanded(child: _HistoryPanel(state: state)),
                       ],
@@ -141,43 +158,58 @@ class _ResultsPanel extends ConsumerWidget {
               const Expanded(child: SectionTitle('Results')),
               if (state.isSearching)
                 const SizedBox(
-                    width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
             ],
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: Builder(builder: (context) {
-              if (state.searchError != null) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      state.searchError!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.statusCritical, fontSize: 13),
+            child: Builder(
+              builder: (context) {
+                if (state.searchError != null) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        state.searchError!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.statusCritical,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
-                  ),
-                );
-              }
-              if (!state.hasSearched) {
-                return const Center(child: MutedText('Type a name, ABHA id, phone or MRN to search.'));
-              }
-              if (!state.isSearching && state.results.isEmpty) {
-                return const Center(child: MutedText('No patients found.'));
-              }
-              return ListView.builder(
-                itemCount: state.results.length,
-                itemBuilder: (context, index) {
-                  final p = state.results[index];
-                  final isSelected = state.selectedPatient?.patientId == p.patientId;
-                  return _PatientResultTile(
-                    patient: p,
-                    isSelected: isSelected,
-                    onTap: () => ref.read(patientRecordsProvider.notifier).selectPatient(p),
                   );
-                },
-              );
-            }),
+                }
+                if (!state.hasSearched) {
+                  return const Center(
+                    child: MutedText(
+                      'Type a name, ABHA id, phone or MRN to search.',
+                    ),
+                  );
+                }
+                if (!state.isSearching && state.results.isEmpty) {
+                  return const Center(child: MutedText('No patients found.'));
+                }
+                return ListView.builder(
+                  itemCount: state.results.length,
+                  itemBuilder: (context, index) {
+                    final p = state.results[index];
+                    final isSelected =
+                        state.selectedPatient?.patientId == p.patientId;
+                    return _PatientResultTile(
+                      patient: p,
+                      isSelected: isSelected,
+                      onTap: () => ref
+                          .read(patientRecordsProvider.notifier)
+                          .selectPatient(p),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -211,7 +243,8 @@ class _PatientResultTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                  color: isSelected ? AppColors.accentMint : AppColors.border),
+                color: isSelected ? AppColors.accentMint : AppColors.border,
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,14 +253,18 @@ class _PatientResultTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(patient.fullName,
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary)),
+                      Text(
+                        patient.fullName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
                       const SizedBox(height: 3),
                       MutedText(patient.summary),
-                      if (patient.abhaId != null && patient.abhaId!.isNotEmpty) ...[
+                      if (patient.abhaId != null &&
+                          patient.abhaId!.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         MutedText('ABHA: ${patient.abhaId}'),
                       ],
@@ -259,44 +296,58 @@ class _HistoryPanel extends StatelessWidget {
           const SectionTitle('Visit History'),
           const SizedBox(height: 4),
           if (patient != null) ...[
-            Text(patient.fullName,
-                style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.accentGreen)),
+            Text(
+              patient.fullName,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.accentGreen,
+              ),
+            ),
             const SizedBox(height: 2),
             MutedText(patient.summary),
           ],
           const SizedBox(height: 10),
           Expanded(
-            child: Builder(builder: (context) {
-              if (patient == null) {
-                return const Center(child: MutedText('Select a patient to view their history.'));
-              }
-              if (state.isLoadingHistory) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (state.historyError != null) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      state.historyError!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.statusCritical, fontSize: 13),
+            child: Builder(
+              builder: (context) {
+                if (patient == null) {
+                  return const Center(
+                    child: MutedText('Select a patient to view their history.'),
+                  );
+                }
+                if (state.isLoadingHistory) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (state.historyError != null) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        state.historyError!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.statusCritical,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
+                  );
+                }
+                if (state.history.isEmpty) {
+                  return const Center(
+                    child: MutedText('No previous visits on file.'),
+                  );
+                }
+                return ListView.builder(
+                  itemCount: state.history.length,
+                  itemBuilder: (context, index) => _HistoryEntryTile(
+                    patient: patient,
+                    entry: state.history[index],
                   ),
                 );
-              }
-              if (state.history.isEmpty) {
-                return const Center(child: MutedText('No previous visits on file.'));
-              }
-              return ListView.builder(
-                itemCount: state.history.length,
-                itemBuilder: (context, index) => _HistoryEntryTile(
-                  patient: patient,
-                  entry: state.history[index],
-                ),
-              );
-            }),
+              },
+            ),
           ),
         ],
       ),
@@ -317,7 +368,8 @@ class _HistoryEntryTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         onTap: () => showDialog(
           context: context,
-          builder: (context) => _ReportDetailsDialog(patient: patient, entry: entry),
+          builder: (context) =>
+              _ReportDetailsDialog(patient: patient, entry: entry),
         ),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -333,19 +385,28 @@ class _HistoryEntryTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(entry.reportDate,
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary)),
+                        Text(
+                          entry.reportDate,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Text(entry.diagnosis ?? '—',
-                              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                          child: Text(
+                            entry.diagnosis ?? '—',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    if (entry.complaints != null && entry.complaints!.isNotEmpty) ...[
+                    if (entry.complaints != null &&
+                        entry.complaints!.isNotEmpty) ...[
                       const SizedBox(height: 3),
                       MutedText(entry.complaints!),
                     ],
@@ -353,10 +414,14 @@ class _HistoryEntryTile extends StatelessWidget {
                       const SizedBox(height: 4),
                       MutedText(
                         [
-                          if (entry.pathogen != null && entry.pathogen!.isNotEmpty) entry.pathogen,
-                          if (entry.cultureResult != null && entry.cultureResult!.isNotEmpty)
+                          if (entry.pathogen != null &&
+                              entry.pathogen!.isNotEmpty)
+                            entry.pathogen,
+                          if (entry.cultureResult != null &&
+                              entry.cultureResult!.isNotEmpty)
                             entry.cultureResult,
-                          if (entry.astResult != null && entry.astResult!.isNotEmpty)
+                          if (entry.astResult != null &&
+                              entry.astResult!.isNotEmpty)
                             'AST: ${entry.astResult}',
                         ].whereType<String>().join(' · '),
                       ),
@@ -365,7 +430,8 @@ class _HistoryEntryTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (entry.diagnosisStatus != null && entry.diagnosisStatus!.isNotEmpty)
+              if (entry.diagnosisStatus != null &&
+                  entry.diagnosisStatus!.isNotEmpty)
                 StatusChip(label: entry.diagnosisStatus!),
             ],
           ),
@@ -375,20 +441,17 @@ class _HistoryEntryTile extends StatelessWidget {
   }
 }
 
-class _ReportDetailsDialog extends StatefulWidget {
+class _ReportDetailsDialog extends ConsumerStatefulWidget {
   final PatientSearchResult patient;
   final PatientHistoryEntry entry;
 
-  const _ReportDetailsDialog({
-    required this.patient,
-    required this.entry,
-  });
+  const _ReportDetailsDialog({required this.patient, required this.entry});
 
   @override
-  State<_ReportDetailsDialog> createState() => _ReportDetailsDialogState();
+  ConsumerState<_ReportDetailsDialog> createState() => _ReportDetailsDialogState();
 }
 
-class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
+class _ReportDetailsDialogState extends ConsumerState<_ReportDetailsDialog> {
   bool _isExporting = false;
 
   Future<void> _downloadPdf() async {
@@ -405,9 +468,12 @@ class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(localeProvider);
     final patient = widget.patient;
     final entry = widget.entry;
-    final reportIdShort = entry.reportId.length > 8 ? entry.reportId.substring(0, 8) : entry.reportId;
+    final reportIdShort = entry.reportId.length > 8
+        ? entry.reportId.substring(0, 8)
+        : entry.reportId;
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -436,16 +502,20 @@ class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
                       color: AppColors.accentTeal.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.assignment_outlined, color: AppColors.accentTeal, size: 22),
+                    child: const Icon(
+                      Icons.assignment_outlined,
+                      color: AppColors.accentTeal,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Clinical Visit Report',
-                          style: TextStyle(
+                        Text(
+                          AppStrings.get('clinical_visit_report', lang),
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
@@ -453,7 +523,7 @@ class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Visit Date: ${entry.reportDate}  •  Report ID: #$reportIdShort',
+                          '${AppStrings.get("visit_date", lang)}: ${entry.reportDate}  •  ${AppStrings.get("report_id", lang)}: #$reportIdShort',
                           style: const TextStyle(
                             fontSize: 12.5,
                             color: AppColors.textMuted,
@@ -462,14 +532,19 @@ class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
                       ],
                     ),
                   ),
-                  if (entry.diagnosisStatus != null && entry.diagnosisStatus!.isNotEmpty) ...[
+                  if (entry.diagnosisStatus != null &&
+                      entry.diagnosisStatus!.isNotEmpty) ...[
                     StatusChip(label: entry.diagnosisStatus!),
                     const SizedBox(width: 12),
                   ],
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: AppColors.textMuted, size: 20),
-                    tooltip: 'Close',
+                    icon: const Icon(
+                      Icons.close,
+                      color: AppColors.textMuted,
+                      size: 20,
+                    ),
+                    tooltip: AppStrings.get('close', lang),
                   ),
                 ],
               ),
@@ -491,11 +566,15 @@ class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.person_outline, size: 16, color: AppColors.accentTeal),
+                        const Icon(
+                          Icons.person_outline,
+                          size: 16,
+                          color: AppColors.accentTeal,
+                        ),
                         const SizedBox(width: 6),
-                        const Text(
-                          'PATIENT INFORMATION',
-                          style: TextStyle(
+                        Text(
+                          AppStrings.get('patient_information', lang).toUpperCase(),
+                          style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: AppColors.accentTeal,
@@ -516,24 +595,50 @@ class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
                     const SizedBox(height: 4),
                     Text(
                       patient.summary,
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                    if ((patient.facilityMrn != null && patient.facilityMrn!.isNotEmpty) ||
-                        (patient.abhaId != null && patient.abhaId!.isNotEmpty)) ...[
+                    if ((patient.facilityMrn != null &&
+                            patient.facilityMrn!.isNotEmpty) ||
+                        (patient.abhaId != null &&
+                            patient.abhaId!.isNotEmpty)) ...[
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          if (patient.facilityMrn != null && patient.facilityMrn!.isNotEmpty)
-                            Text('MRN: ${patient.facilityMrn}',
-                                style: const TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                          if (patient.facilityMrn != null &&
+                              patient.facilityMrn!.isNotEmpty)
+                            Text(
+                              'MRN: ${patient.facilityMrn}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           if (patient.facilityMrn != null &&
                               patient.facilityMrn!.isNotEmpty &&
                               patient.abhaId != null &&
                               patient.abhaId!.isNotEmpty)
-                            const Text('  •  ', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                          if (patient.abhaId != null && patient.abhaId!.isNotEmpty)
-                            Text('ABHA ID: ${patient.abhaId}',
-                                style: const TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                            const Text(
+                              '  •  ',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          if (patient.abhaId != null &&
+                              patient.abhaId!.isNotEmpty)
+                            Text(
+                              'ABHA ID: ${patient.abhaId}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                         ],
                       ),
                     ],
@@ -554,13 +659,23 @@ class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Clinical Findings & Diagnosis',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    Text(
+                      AppStrings.get('clinical_findings', lang),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    _DetailRow(label: 'Diagnosis', value: entry.diagnosis ?? '—'),
-                    _DetailRow(label: 'Chief Complaints', value: entry.complaints ?? '—'),
+                    _DetailRow(
+                      label: AppStrings.get('diagnosis_label', lang),
+                      value: entry.diagnosis ?? '—',
+                    ),
+                    _DetailRow(
+                      label: AppStrings.get('chief_complaints', lang),
+                      value: entry.complaints ?? '—',
+                    ),
                   ],
                 ),
               ),
@@ -579,17 +694,32 @@ class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Laboratory Results & Antimicrobial Resistance',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      Text(
+                        AppStrings.get('lab_results', lang),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       if (entry.pathogen != null && entry.pathogen!.isNotEmpty)
-                        _DetailRow(label: 'Identified Pathogen', value: entry.pathogen!),
-                      if (entry.cultureResult != null && entry.cultureResult!.isNotEmpty)
-                        _DetailRow(label: 'Culture Result', value: entry.cultureResult!),
-                      if (entry.astResult != null && entry.astResult!.isNotEmpty)
-                        _DetailRow(label: 'AST Susceptibility', value: entry.astResult!),
+                        _DetailRow(
+                          label: AppStrings.get('identified_pathogen', lang),
+                          value: entry.pathogen!,
+                        ),
+                      if (entry.cultureResult != null &&
+                          entry.cultureResult!.isNotEmpty)
+                        _DetailRow(
+                          label: AppStrings.get('culture_result_label', lang),
+                          value: entry.cultureResult!,
+                        ),
+                      if (entry.astResult != null &&
+                          entry.astResult!.isNotEmpty)
+                        _DetailRow(
+                          label: AppStrings.get('ast_susceptibility', lang),
+                          value: entry.astResult!,
+                        ),
                     ],
                   ),
                 ),
@@ -606,28 +736,43 @@ class _ReportDetailsDialogState extends State<_ReportDetailsDialog> {
                   OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: const Text('Close'),
+                    child: Text(AppStrings.get('close', lang)),
                   ),
                   const SizedBox(width: 14),
                   FilledButton.icon(
                     onPressed: _isExporting ? null : _downloadPdf,
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.accentTeal,
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     icon: _isExporting
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                    label: Text(
-                      _isExporting ? 'Generating PDF...' : 'Download PDF',
+                     label: Text(
+                      _isExporting
+                          ? AppStrings.get('generating_pdf', lang)
+                          : AppStrings.get('download_pdf', lang),
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -655,12 +800,24 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 160,
-            child: Text(label,
-                style: const TextStyle(fontSize: 13, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           Expanded(
-            child: Text(value,
-                style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

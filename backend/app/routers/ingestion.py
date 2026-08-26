@@ -163,7 +163,16 @@ def parse_ocr_document(
                         "status": "Configuration Required",
                         "is_valid": False,
                         "summary": "Google Gemini Vision API key is not configured on the server (set GEMINI_API_KEY in backend/.env).",
-                        "findings": ["CONFIG_REQUIRED: Set GEMINI_API_KEY in backend/.env to enable multimodal handwriting & document recognition."],
+                        "findings": [
+                            {
+                                "category": "configuration",
+                                "severity": "CRITICAL",
+                                "title": "Missing API Key",
+                                "description": "CONFIG_REQUIRED: Set GEMINI_API_KEY in backend/.env to enable multimodal handwriting & document recognition.",
+                                "field": "GEMINI_API_KEY",
+                                "suggested_action": "Add GEMINI_API_KEY to your server's .env file."
+                            }
+                        ],
                         "mdr_flag": False,
                     },
                 }

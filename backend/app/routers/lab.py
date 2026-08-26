@@ -50,6 +50,8 @@ def create_isolate(
             detail="Each antibiotic may appear only once in a panel.",
         )
 
+    from app.services.translation import TranslationService
+
     isolate = LabIsolate(
         report_id=body.report_id,
         patient_id=body.patient_id,
@@ -59,14 +61,14 @@ def create_isolate(
         collection_date=body.collection_date,
         test_date=body.test_date or date.today(),
         specimen_type=body.specimen_type,
-        specimen_type_other=body.specimen_type_other,
+        specimen_type_other=TranslationService.translate_to_english(body.specimen_type_other),
         culture_result=body.culture_result,
-        culture_result_other=body.culture_result_other,
+        culture_result_other=TranslationService.translate_to_english(body.culture_result_other),
         pathogen=body.pathogen,
-        pathogen_other=body.pathogen_other,
+        pathogen_other=TranslationService.translate_to_english(body.pathogen_other),
         infection_origin=body.infection_origin,
         status=body.status,
-        notes=body.notes,
+        notes=TranslationService.translate_to_english(body.notes),
     )
 
     for entry in body.ast_results:
