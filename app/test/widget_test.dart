@@ -31,7 +31,7 @@ const _allRoleLabels = [
   'Live Surveillance',
   'Disease Trends',
   'Geographic Clusters',
-  'National Statistics',
+  'AMR Watch',
   'Alerts',
   'Applications',
 ];
@@ -40,7 +40,7 @@ const _healthAuthorityLabels = [
   'Live Surveillance',
   'Disease Trends',
   'Geographic Clusters',
-  'National Statistics',
+  'AMR Watch',
   'Alerts',
 ];
 

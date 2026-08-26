@@ -3,13 +3,13 @@ import 'models/nav_destination.dart';
 import 'models/session.dart';
 import 'screens/admin_applications_screen.dart';
 import 'screens/alerts_screen.dart';
+import 'screens/amr_watch_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/disease_trends_screen.dart';
 import 'screens/geographic_clusters_screen.dart';
 import 'screens/health_authority_dashboard_screen.dart';
 import 'screens/lab_dashboard_screen.dart';
 import 'screens/lab_worklist_screen.dart';
-import 'screens/national_statistics_screen.dart';
 import 'screens/patient_records_screen.dart';
 import 'screens/shell_screen.dart';
 import 'screens/submit_isolate_screen.dart';
@@ -112,9 +112,9 @@ ShellScreen _healthAuthorityWorkspace(String userName) => ShellScreen(
         ),
         NavDestination(
           key: 'amr-watch',
-          label: 'National Statistics',
-          icon: Icons.bar_chart_outlined,
-          builder: (_) => const NationalStatisticsScreen(),
+          label: 'AMR Watch',
+          icon: Icons.shield_outlined,
+          builder: (_) => const AMRWatchScreen(),
         ),
         NavDestination(
           key: 'alerts',
