@@ -286,7 +286,7 @@ def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local 
         # A. Name detection
         # Check standard key:value lines
         for line in clean_lines:
-            m = re.search(r"^(?:patient name|pt name|name|patient)\s*[:\-]\s*([A-Za-z\.\s]+?)(?:\s*[,;]|\s+age\b|\s+sex\b|$)", line, re.IGNORECASE)
+            m = re.search(r"^(?:patient name|pt name|name|patient)\s*[:\-]\s*([A-Za-z\.\s]+?)(?:\s*[,;\|]|\s+age\b|\s+sex\b|$)", line, re.IGNORECASE)
             if m and len(m.group(1).strip()) > 1:
                 cand = m.group(1).strip()
                 if cand.lower() not in ["details", "info", "record", "name"]:
@@ -364,6 +364,34 @@ def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local 
                 extracted_complaints = clean_lines[1]
             elif extracted_symptoms:
                 extracted_complaints = ", ".join(extracted_symptoms)
+
+    if not extracted_diagnosis and not extracted_complaints and not extracted_symptoms and not extracted_name:
+        return {
+            "raw_text": text,
+            "ocr_engine": ocr_engine,
+            "extracted": {
+                "full_name": None,
+                "exact_age": None,
+                "age_group": "25-44",
+                "sex": "Other",
+                "district": "Unknown",
+                "complaints": None,
+                "diagnosis": None,
+                "diagnosis_status": "Suspected",
+                "infection_syndrome": None,
+                "infection_origin": "Community-acquired",
+                "patient_outcome": "Under review",
+                "symptoms": [],
+            },
+            "intelligence_audit": {
+                "plausibility_score": 0,
+                "status": "Invalid Document",
+                "is_valid": False,
+                "summary": "Non-medical or unreadable document. No clinical diagnosis or prescription data detected.",
+                "findings": ["NON_MEDICAL_DOCUMENT: The scanned content does not contain clinical entities, patient records, or medical prescriptions."],
+                "mdr_flag": False,
+            },
+        }
 
     # 3. Canonical Normalization
     norm_sex, _ = normalize_sex(extracted_sex)
@@ -553,6 +581,30 @@ def parse_raw_ast_text(text: str, ocr_engine: str = "Google Vision & Local OCR")
                         "zone_diameter_mm": zone_mm,
                         "method": "Disk diffusion",
                     })
+
+    if not extracted_pathogen and not extracted_specimen and not extracted_ast_panel and not extracted_accession:
+        return {
+            "raw_text": text,
+            "ocr_engine": ocr_engine,
+            "extracted": {
+                "accession_no": None,
+                "test_date": date.today().isoformat(),
+                "specimen_type": "Other",
+                "culture_result": "Pending",
+                "pathogen": None,
+                "infection_origin": "Community-acquired",
+                "ast_method": "Disk diffusion",
+                "ast_panel": [],
+            },
+            "intelligence_audit": {
+                "plausibility_score": 0,
+                "status": "Invalid Document",
+                "is_valid": False,
+                "summary": "Non-lab document or unreadable AST panel.",
+                "findings": ["NON_LAB_DOCUMENT: The provided content does not contain microbiology specimen, culture, or antibiotic susceptibility results."],
+                "mdr_flag": False,
+            },
+        }
 
     # Normalization
     norm_specimen, _, _ = normalize_specimen(extracted_specimen)

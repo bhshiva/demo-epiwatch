@@ -166,14 +166,10 @@ def parse_ocr_document(
                         "findings": [
                             {
                                 "category": "configuration",
-                                "severity": "CRITICAL",
-                                "title": "Missing API Key",
-                                "description": "CONFIG_REQUIRED: Set GEMINI_API_KEY in backend/.env to enable multimodal handwriting & document recognition.",
-                                "field": "GEMINI_API_KEY",
-                                "suggested_action": "Add GEMINI_API_KEY to your server's .env file."
                                 "severity": "WARNING",
                                 "title": "Gemini API Key Required",
                                 "description": "Set GEMINI_API_KEY in backend/.env to enable multimodal handwriting & document recognition.",
+                                "field": "GEMINI_API_KEY",
                                 "suggested_action": "Add GEMINI_API_KEY to backend/.env and restart backend server.",
                             }
                         ],

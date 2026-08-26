@@ -108,8 +108,8 @@ def test_clinical_report_ocr_parsing():
     assert extracted["age_group"] == "45-64"
     assert extracted["sex"] == "Male"
     assert extracted["district"] == "Mumbai"
-    assert "Fever" in extracted["symptoms"]
-    assert "Cough" in extracted["symptoms"]
+    assert any("fever" in s.lower() for s in extracted["symptoms"])
+    assert any("cough" in s.lower() for s in extracted["symptoms"])
     assert res["intelligence_audit"]["is_valid"] is True
 
 

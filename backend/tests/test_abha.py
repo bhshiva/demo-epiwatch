@@ -85,7 +85,7 @@ def test_gateway_headers_include_abdm_tracing_fields():
     assert headers["Authorization"] == "Bearer tok"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_verification_rejects_a_bad_number_without_calling_abdm():
     """An obviously wrong number should never cost a round trip."""
     client = AbdmClient(
