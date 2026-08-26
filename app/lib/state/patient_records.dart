@@ -84,11 +84,6 @@ class PatientRecordsNotifier extends Notifier<PatientRecordsState> {
 
   Future<void> search() async {
     final term = state.query.trim();
-    if (term.isEmpty) {
-      state = state.copyWith(results: const [], clearSearchError: true);
-      return;
-    }
-
     state = state.copyWith(isSearching: true, clearSearchError: true);
     final api = ref.read(apiClientProvider);
     try {

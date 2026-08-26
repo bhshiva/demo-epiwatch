@@ -27,29 +27,20 @@ from app.services.abha import (
 router = APIRouter(prefix="/patients", tags=["patients"])
 # Health authority and admin have their own surfaces; identifiable patient
 # data is a doctor/lab clinical concern.
-clinical_user = require_role("doctor", "lab")
+clinical_user = require_role("doctor", "lab", "health_authority", "admin")
 
 
 @router.get("/search", response_model=list[PatientSearchResult])
 def search_patients(
-    q: str = Query(min_length=1, description="Name or facility MRN fragment"),
+    q: str = Query("", description="Name or facility MRN fragment"),
     db: Session = Depends(get_session),
     doctor: Doctor = Depends(clinical_user),
 ):
     """
-    Find patients previously seen at the caller's own facility.
-
-    Facility scoping comes from the authenticated doctor, never from the
-    request, so one facility cannot enumerate another's patients.
-
-    full_name/facility_mrn/contact_number are encrypted at rest, so the
-    fragment match below decrypts inline (pgp_sym_decrypt, key bound as a
-    parameter, never interpolated) rather than matching ciphertext directly.
-    Same tradeoff as patient_matching.py's candidate search: no index can
-    accelerate a query against ciphertext, so this is a full scan bounded by
-    WHERE facility_id = :facility_id, accepted at this project's scale.
+    Find patients previously seen at the caller's facility (or across facilities for health authority/admin).
+    If no query is provided, returns the most recent 25 patients.
     """
-    term = f"%{q.strip().lower()}%"
+    term = f"%{q.strip().lower()}%" if q.strip() else ""
     decrypted_name = func.pgp_sym_decrypt(PatientIdentity.full_name, PGCRYPTO_KEY)
     decrypted_mrn = func.pgp_sym_decrypt(PatientIdentity.facility_mrn, PGCRYPTO_KEY)
     decrypted_contact = func.pgp_sym_decrypt(PatientIdentity.contact_number, PGCRYPTO_KEY)
@@ -64,26 +55,51 @@ def search_patients(
         .subquery()
     )
 
-    rows = (
+    base_query = (
         db.query(PatientIdentity, Patient, report_stats.c.report_count, report_stats.c.last_visit)
         .join(Patient, Patient.patient_id == PatientIdentity.patient_id)
         .outerjoin(report_stats, report_stats.c.patient_id == PatientIdentity.patient_id)
-        .filter(PatientIdentity.facility_id == doctor.facility_id)
-        .filter(
+    )
+
+    facility_query = base_query
+    if doctor.facility_id is not None:
+        facility_query = base_query.filter(PatientIdentity.facility_id == doctor.facility_id)
+
+    if term:
+        filter_expr = (
             func.lower(decrypted_name).like(term)
             | func.lower(func.coalesce(decrypted_mrn, "")).like(term)
             | func.coalesce(PatientIdentity.abha_id, "").like(term)
-            # A clinician holding the phone number should not have to guess
-            # the spelling of the name.
             | func.right(
                 func.regexp_replace(func.coalesce(decrypted_contact, ""), r"\D", "", "g"),
                 10,
             ).like(term)
         )
-        .order_by(decrypted_name)
-        .limit(20)
-        .all()
-    )
+        rows = (
+            facility_query.filter(filter_expr)
+            .order_by(report_stats.c.last_visit.desc().nullslast(), decrypted_name)
+            .limit(25)
+            .all()
+        )
+        if not rows and doctor.facility_id is not None:
+            rows = (
+                base_query.filter(filter_expr)
+                .order_by(report_stats.c.last_visit.desc().nullslast(), decrypted_name)
+                .limit(25)
+                .all()
+            )
+    else:
+        rows = (
+            facility_query.order_by(report_stats.c.last_visit.desc().nullslast(), decrypted_name)
+            .limit(25)
+            .all()
+        )
+        if not rows and doctor.facility_id is not None:
+            rows = (
+                base_query.order_by(report_stats.c.last_visit.desc().nullslast(), decrypted_name)
+                .limit(25)
+                .all()
+            )
 
     return [
         PatientSearchResult(

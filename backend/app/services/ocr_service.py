@@ -3,6 +3,9 @@ import re
 import base64
 from typing import Dict, List, Any, Optional
 from datetime import date, datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from app.services.normalization_service import (
     normalize_sex,
@@ -28,7 +31,7 @@ def extract_with_google_vision_ocr(image_base64: str, document_type: str) -> str
     Uses Google Cloud Vision / Gemini Vision multimodal OCR to extract structured
     text from uploaded images of prescriptions, clinical notes, or lab sheets.
     """
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    api_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
     if not api_key or not image_base64:
         return ""
 
@@ -71,15 +74,25 @@ def extract_with_google_vision_ocr(image_base64: str, document_type: str) -> str
         
         image_bytes = base64.b64decode(clean_b64)
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                genai.types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
-                prompt,
-            ],
-        )
-        return (response.text or "").strip()
+        # Try gemini-3.6-flash, fallback to gemini-2.5-flash
+        for model_name in ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash"]:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=[
+                        genai.types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                        prompt,
+                    ],
+                )
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as model_err:
+                print(f"[OCR] Model {model_name} attempt failed: {model_err}")
+                continue
+
+        return ""
     except Exception as e:
+        print(f"[OCR] Error during Gemini Vision OCR: {e}")
         return ""
 
 
@@ -117,8 +130,8 @@ def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local 
             },
         }
 
-    lines = [l.strip() for l in text.splitlines() if l.strip()]
-    full_text = " ".join(lines)
+    clean_lines = [re.sub(r"^[\-\*•\s]+", "", re.sub(r"[\*#_`]", "", l)).strip() for l in text.splitlines() if l.strip()]
+    full_text = " ".join(clean_lines)
 
     extracted_name = None
     extracted_age = None
@@ -131,29 +144,70 @@ def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local 
     extracted_outcome = None
     extracted_symptoms: List[str] = []
 
-    # Regex search patterns for key demographics and clinical entities
-    name_match = re.search(r"(?:name|pt name|patient name|patient)\s*[:\-]\s*([A-Za-z\.\s]+?)(?:\s*[\|\n,;]|\s+age\b|\s+sex\b|\s+gender\b|\s+date\b|$)", full_text, re.IGNORECASE)
-    if name_match:
-        extracted_name = name_match.group(1).strip()
+    # 1. Line-by-line structured search (high precision for formatted outputs)
+    for line in clean_lines:
+        if not extracted_name:
+            m = re.search(r"^(?:patient name|pt name|name)\s*[:\-]\s*([A-Za-z\.\s]+?)(?:\s*[,;]|\s+age\b|\s+sex\b|$)", line, re.IGNORECASE)
+            if not m and not any(line.lower().startswith(skip) for skip in ["patient details", "patient info", "patient record"]):
+                m = re.search(r"^patient\s*[:\-]\s*([A-Za-z\.\s]+?)(?:\s*[,;]|\s+age\b|\s+sex\b|$)", line, re.IGNORECASE)
+            if m and len(m.group(1).strip()) > 1:
+                candidate = m.group(1).strip()
+                if candidate.lower() not in ["details", "info", "record", "name"]:
+                    extracted_name = candidate
+        if not extracted_age:
+            m = re.search(r"(?:age|years|yrs|yr)\s*[:\-\/]?\s*(\d{1,3})", line, re.IGNORECASE)
+            if not m:
+                m = re.search(r"(?:age\/gender|age\/sex)\s*[:\-]?\s*(\d{1,3})", line, re.IGNORECASE)
+            if m:
+                try:
+                    extracted_age = int(m.group(1))
+                except ValueError:
+                    pass
+        if not extracted_sex:
+            m = re.search(r"(?:sex|gender|age\/gender|age\/sex)\s*[:\-]?\s*(?:\d{1,3}\s*)?(male|female|other|m\b|f\b)", line, re.IGNORECASE)
+            if m:
+                extracted_sex = m.group(1).strip()
+        if not extracted_district:
+            m = re.search(r"(?:district|city|location|address)\s*[:\-]\s*([A-Za-z]+)", line, re.IGNORECASE)
+            if m:
+                extracted_district = m.group(1).strip()
+        if not extracted_diagnosis:
+            m = re.search(r"^(?:diagnosis|dx|impression|condition)\s*[:\-]\s*([^\n;]+)", line, re.IGNORECASE)
+            if m:
+                extracted_diagnosis = m.group(1).strip()
+        if not extracted_complaints:
+            m = re.search(r"^(?:chief complaints|complaints|c\/o|history|h\/o)\s*[:\-]\s*([^\n;]+)", line, re.IGNORECASE)
+            if m:
+                extracted_complaints = m.group(1).strip()
 
-    age_match = re.search(r"(?:age|yrs|years old|yr)\s*[:\-]?\s*(\d{1,3})", full_text, re.IGNORECASE)
-    if age_match:
-        try:
-            extracted_age = int(age_match.group(1))
-        except ValueError:
-            pass
+    # 2. Fallback regex search on full text
+    if not extracted_name:
+        name_match = re.search(r"(?:name|pt name|patient name|patient)\s*[:\-]\s*([A-Za-z\.\s]+?)(?:\s*[\|\n,;]|\s+age\b|\s+sex\b|\s+gender\b|\s+date\b|$)", full_text, re.IGNORECASE)
+        if name_match:
+            extracted_name = name_match.group(1).strip()
 
-    sex_match = re.search(r"(?:sex|gender)\s*[:\-]\s*(male|female|other|m\b|f\b)", full_text, re.IGNORECASE)
-    if sex_match:
-        extracted_sex = sex_match.group(1).strip()
+    if not extracted_age:
+        age_match = re.search(r"(?:age|yrs|years old|yr)\s*[:\-]?\s*(\d{1,3})", full_text, re.IGNORECASE)
+        if age_match:
+            try:
+                extracted_age = int(age_match.group(1))
+            except ValueError:
+                pass
 
-    district_match = re.search(r"(?:district|city|location|address)\s*[:\-]\s*([A-Za-z]+)", full_text, re.IGNORECASE)
-    if district_match:
-        extracted_district = district_match.group(1).strip()
+    if not extracted_sex:
+        sex_match = re.search(r"(?:sex|gender)\s*[:\-]\s*(male|female|other|m\b|f\b)", full_text, re.IGNORECASE)
+        if sex_match:
+            extracted_sex = sex_match.group(1).strip()
 
-    diag_match = re.search(r"(?:diagnosis|dx|impression|condition)\s*[:\-]\s*([^\.\n,;]+)", full_text, re.IGNORECASE)
-    if diag_match:
-        extracted_diagnosis = diag_match.group(1).strip()
+    if not extracted_district:
+        district_match = re.search(r"(?:district|city|location|address)\s*[:\-]\s*([A-Za-z]+)", full_text, re.IGNORECASE)
+        if district_match:
+            extracted_district = district_match.group(1).strip()
+
+    if not extracted_diagnosis:
+        diag_match = re.search(r"(?:diagnosis|dx|impression|condition)\s*[:\-]\s*([^\.\n,;]+)", full_text, re.IGNORECASE)
+        if diag_match:
+            extracted_diagnosis = diag_match.group(1).strip()
 
     syndrome_match = re.search(r"(?:syndrome|infection syndrome)\s*[:\-]\s*([^\.\n,;]+)", full_text, re.IGNORECASE)
     if syndrome_match:
@@ -163,9 +217,10 @@ def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local 
     if origin_match:
         extracted_origin = origin_match.group(1).strip()
 
-    complaints_match = re.search(r"(?:complaints|chief complaints|c\/o|history|h\/o)\s*[:\-]\s*([^\.\n;]+)", full_text, re.IGNORECASE)
-    if complaints_match:
-        extracted_complaints = complaints_match.group(1).strip()
+    if not extracted_complaints:
+        complaints_match = re.search(r"(?:complaints|chief complaints|c\/o|history|h\/o)\s*[:\-]\s*([^\.\n;]+)", full_text, re.IGNORECASE)
+        if complaints_match:
+            extracted_complaints = complaints_match.group(1).strip()
 
     # Extract symptoms from free text
     extracted_symptoms = normalize_symptoms(full_text)

@@ -78,8 +78,7 @@ class ApiClient {
   Future<Map<String, dynamic>> createReport(ReportCreateRequest request) =>
       post('/reports', request.toJson());
 
-  Future<List<PatientSearchResult>> searchPatients(String query) async {
-    if (query.trim().isEmpty) return [];
+  Future<List<PatientSearchResult>> searchPatients([String query = '']) async {
     final res = await getList('/patients/search', query: {'q': query.trim()});
     return res.map((e) => PatientSearchResult.fromJson(e as Map<String, dynamic>)).toList();
   }

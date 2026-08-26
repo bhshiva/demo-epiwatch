@@ -32,6 +32,16 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
   Timer? _debounce;
 
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(patientRecordsProvider.notifier).search();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
     _controller.dispose();
