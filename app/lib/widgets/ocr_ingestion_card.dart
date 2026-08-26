@@ -182,7 +182,6 @@ class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with Single
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Bar
           InkWell(
             onTap: () {
               setState(() {
@@ -272,7 +271,6 @@ class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with Single
           if (_isExpanded) ...[
             const Divider(height: 1, color: AppColors.border),
 
-            // Tab Mode Switcher
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(
@@ -283,10 +281,20 @@ class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with Single
                   const SizedBox(width: 8),
                   _buildTabButton(2, AppStrings.get('paste_notes', lang), Icons.edit_note_outlined),
                 ],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildTabButton(0, 'Quick Templates', Icons.collections_bookmark_outlined),
+                    const SizedBox(width: 8),
+                    _buildTabButton(1, 'Google Lens / Scan', Icons.camera_alt_outlined),
+                    const SizedBox(width: 8),
+                    _buildTabButton(2, 'Paste / Type Notes', Icons.edit_note_outlined),
+                  ],
+                ),
               ),
             ),
 
-            // Tab Content
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: Column(
@@ -296,7 +304,6 @@ class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with Single
                   if (_selectedTab == 1) _buildGoogleLensScanTab(isDoctor),
                   if (_selectedTab == 2) _buildManualTextTab(isDoctor),
 
-                  // Structured Extraction Preview (Decramped Cards)
                   if (_lastParsedResult != null) ...[
                     const SizedBox(height: 16),
                     const Divider(height: 1, color: AppColors.border),
@@ -314,22 +321,20 @@ class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with Single
 
   Widget _buildTabButton(int index, String label, IconData icon) {
     final isSelected = _selectedTab == index;
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedTab = index;
-          });
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.accentTeal : AppColors.bgTertiary,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? AppColors.accentTeal : AppColors.border,
-            ),
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedTab = index;
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accentTeal : AppColors.bgTertiary,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.accentTeal : AppColors.border,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -351,9 +356,25 @@ class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with Single
                     color: isSelected ? Colors.white : AppColors.textPrimary,
                   ),
                 ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Colors.white : AppColors.textPrimary,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -622,7 +643,6 @@ class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with Single
         const SizedBox(height: 10),
 
         if (isDoctor) ...[
-          // Doctor Demographics Card
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -659,7 +679,6 @@ class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with Single
             ),
           ),
         ] else ...[
-          // Lab Isolate & AST Matrix Card
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(

@@ -51,9 +51,26 @@ class IntelligenceAudit {
       status: json['status'] as String? ?? 'VALID',
       isValid: json['is_valid'] as bool? ?? true,
       summary: json['summary'] as String? ?? '',
-      findings: rawFindings
-          .map((f) => IntelligenceFinding.fromJson(f as Map<String, dynamic>))
-          .toList(),
+      findings: rawFindings.map((f) {
+        if (f is Map<String, dynamic>) {
+          return IntelligenceFinding.fromJson(f);
+        } else if (f is Map) {
+          return IntelligenceFinding.fromJson(Map<String, dynamic>.from(f));
+        } else if (f is String) {
+          return IntelligenceFinding(
+            category: 'notice',
+            severity: 'INFO',
+            title: 'Notice',
+            description: f,
+          );
+        }
+        return IntelligenceFinding(
+          category: 'general',
+          severity: 'INFO',
+          title: 'Info',
+          description: f.toString(),
+        );
+      }).toList(),
       mdrFlag: json['mdr_flag'] as bool? ?? false,
     );
   }

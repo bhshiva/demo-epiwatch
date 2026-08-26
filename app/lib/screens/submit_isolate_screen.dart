@@ -215,9 +215,7 @@ class _ErrorBanner extends StatelessWidget {
           color: AppColors.statusCritical,
           size: 18,
         ),
-        SizedBox(
-          width: 320,
-
+        Expanded(
           child: Text(
             message,
             style: const TextStyle(

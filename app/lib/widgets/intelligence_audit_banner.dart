@@ -33,7 +33,6 @@ class IntelligenceAuditBanner extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -101,8 +100,6 @@ class IntelligenceAuditBanner extends StatelessWidget {
               ],
             ),
           ),
-
-          // MDR Alert if detected
           if (audit.mdrFlag)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -129,8 +126,6 @@ class IntelligenceAuditBanner extends StatelessWidget {
                 ],
               ),
             ),
-
-          // Detailed Findings
           if (audit.findings.isNotEmpty) ...[
             const Divider(height: 1),
             Padding(

@@ -48,6 +48,17 @@ app.include_router(surveillance_router.router)
 app.include_router(admin_dashboard_router.router)
 app.include_router(ingestion_router.router)
 
+@app.get("/")
+def root():
+    return {
+        "service": "EpiWatch Surveillance API",
+        "status": "online",
+        "health": "/health",
+        "docs": "/docs",
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+

@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import '../models/application_models.dart';
 import '../models/dashboard_models.dart';
 import '../models/ingestion_models.dart';
@@ -19,8 +17,8 @@ class ApiClient {
       : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: baseUrl ?? defaultBaseUrl,
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 20),
+              connectTimeout: const Duration(seconds: 45),
+              receiveTimeout: const Duration(seconds: 60),
               // Let non-2xx through so the interceptor can classify it,
               // rather than Dio throwing a generic DioException first.
               validateStatus: (_) => true,
@@ -43,8 +41,7 @@ class ApiClient {
     const envUrl = String.fromEnvironment('API_URL',
         defaultValue: String.fromEnvironment('API_BASE_URL'));
     if (envUrl.isNotEmpty) return envUrl;
-    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000';
-    return 'http://127.0.0.1:8000';
+    return 'https://epiwatch-backend-ek7z.onrender.com';
   }
 
   void setToken(String? token) => _token = token;
@@ -78,8 +75,7 @@ class ApiClient {
   Future<Map<String, dynamic>> createReport(ReportCreateRequest request) =>
       post('/reports', request.toJson());
 
-  Future<List<PatientSearchResult>> searchPatients(String query) async {
-    if (query.trim().isEmpty) return [];
+  Future<List<PatientSearchResult>> searchPatients([String query = '']) async {
     final res = await getList('/patients/search', query: {'q': query.trim()});
     return res.map((e) => PatientSearchResult.fromJson(e as Map<String, dynamic>)).toList();
   }

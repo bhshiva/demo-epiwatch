@@ -8,6 +8,7 @@ import '../state/dashboard.dart';
 import '../state/locale.dart';
 import '../theme/app_colors.dart';
 import '../widgets/status_chip.dart';
+import '../widgets/trend_badge.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   final String doctorName;
@@ -38,7 +39,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardProvider);
-    final isWide = MediaQuery.sizeOf(context).width >= 1100;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isWide = screenWidth >= 1100;
+    final isMobile = screenWidth < 600;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -59,6 +62,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1280),
                 child: Column(
+    return RefreshIndicator(
+      onRefresh: () => ref.read(dashboardProvider.notifier).load(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(isMobile ? 16 : 28),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1180),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (state.error != null) ...[
+                _ErrorBanner(message: state.error!),
+                const SizedBox(height: 18),
+              ],
+              _Header(
+                doctorName: widget.doctorName,
+                facilityName: widget.facilityName,
+                onSubmitReport: widget.onSubmitReport,
+              ),
+              const SizedBox(height: 22),
+              SectionCard(
+                child: _PatientQueue(reports: state.recentReports),
+              ),
+              const SizedBox(height: 18),
+              _KpiRow(summary: state.summary, alertCount: DemoData.outbreakAlerts.length),
+              const SizedBox(height: 18),
+              if (isWide)
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (state.error != null) ...[
@@ -696,6 +727,103 @@ class _PatientQueueState extends State<_PatientQueue> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Trend Chart
 // ─────────────────────────────────────────────────────────────────────────────
+class _KpiRow extends StatelessWidget {
+  final DashboardSummary summary;
+  final int alertCount;
+  const _KpiRow({required this.summary, required this.alertCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final tiles = [
+      (summary.patientsToday.toString(), 'Patients Today', AppColors.accentBlue, 4.2, 1.5, false),
+      (summary.reportsSubmittedTotal.toString(), 'Reports Submitted', AppColors.accentBlue, 12.4, 8.1, false),
+      (summary.activeConditions.toString(), 'Active Conditions', AppColors.accentBlue, -0.8, 0.0, true),
+      (alertCount.toString(), 'Facility Alerts', AppColors.accentMint, 3.8, -1.2, true),
+    ];
+    return LayoutBuilder(builder: (context, constraints) {
+      final availableWidth = constraints.maxWidth;
+      final bool useScroll = availableWidth < 800;
+      final double cardWidth = useScroll
+          ? 205.0
+          : (availableWidth - 10 * (tiles.length - 1)) / tiles.length;
+
+      final cardWidgets = [
+        for (final t in tiles)
+          SizedBox(
+            width: cardWidth,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    t.$1,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: t.$3,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    t.$2,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  DualTrendRow(
+                    delta7d: t.$4,
+                    delta30d: t.$5,
+                    higherIsWorse: t.$6,
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ];
+
+      if (useScroll) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (int i = 0; i < cardWidgets.length; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                cardWidgets[i],
+              ],
+            ],
+          ),
+        );
+      }
+
+      return Row(
+        children: [
+          for (int i = 0; i < cardWidgets.length; i++) ...[
+            if (i > 0) const SizedBox(width: 10),
+            Expanded(child: cardWidgets[i]),
+          ],
+        ],
+      );
+    });
+  }
+}
 
 class _TrendCard extends StatelessWidget {
   const _TrendCard();

@@ -34,12 +34,13 @@ class _LabDashboardScreenState extends ConsumerState<LabDashboardScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(labDashboardProvider);
     final isWide = MediaQuery.sizeOf(context).width >= 1100;
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     return RefreshIndicator(
       onRefresh: () => ref.read(labDashboardProvider.notifier).load(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.all(isMobile ? 16 : 28),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1180),
           child: Column(

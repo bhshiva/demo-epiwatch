@@ -34,6 +34,7 @@ class _SubmitReportScreenState extends ConsumerState<SubmitReportScreen> {
     final state = ref.watch(submitReportProvider);
     final notifier = ref.read(submitReportProvider.notifier);
     final lang = ref.watch(localeProvider);
+    final isPhone = MediaQuery.sizeOf(context).width < 600;
 
     if (state.isSubmitted) {
       return _SuccessView(state: state);
@@ -43,7 +44,7 @@ class _SubmitReportScreenState extends ConsumerState<SubmitReportScreen> {
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
+            padding: EdgeInsets.fromLTRB(isPhone ? 16 : 28, 20, isPhone ? 16 : 28, 20),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 920),
               child: Column(
@@ -1822,9 +1823,10 @@ class _SubmitBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(submitReportProvider.notifier);
     final lang = ref.watch(localeProvider);
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: const BoxDecoration(
         color: AppColors.bgSecondary,
         border: Border(top: BorderSide(color: AppColors.border)),
@@ -1874,11 +1876,56 @@ class _SubmitBar extends ConsumerWidget {
                 style: const TextStyle(
                   color: AppColors.statusCritical,
                   fontSize: 12,
+      child: isNarrow
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (state.errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      state.errorMessage!,
+                      style: const TextStyle(
+                        color: AppColors.statusCritical,
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                else if (state.validationSummary.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: MutedText(state.validationSummary),
+                  ),
+                FilledButton(
+                  onPressed: state.canSubmit ? () => notifier.submit() : null,
+                  child: Text(state.isBusy ? 'Submitting…' : 'Submit Report'),
                 ),
-              ),
+              ],
+            )
+          : Row(
+              children: [
+                FilledButton(
+                  onPressed: state.canSubmit ? () => notifier.submit() : null,
+                  child: Text(state.isBusy ? 'Submitting…' : 'Submit Report'),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: MutedText(state.validationSummary),
+                ),
+                if (state.errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Text(
+                      state.errorMessage!,
+                      style: const TextStyle(
+                        color: AppColors.statusCritical,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../widgets/trend_badge.dart';
 
 class AMRWatchScreen extends StatefulWidget {
   const AMRWatchScreen({super.key});
@@ -17,6 +18,8 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
       region: 'Karnataka',
       isolatesTested: 6,
       resistanceRate: 88,
+      trend7d: 4.2,
+      trend30d: -1.5,
       isSevere: true,
     ),
     _PathogenResistanceRow(
@@ -25,6 +28,8 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
       region: 'Karnataka',
       isolatesTested: 5,
       resistanceRate: 80,
+      trend7d: -0.8,
+      trend30d: 0.0,
       isSevere: true,
     ),
     _PathogenResistanceRow(
@@ -33,6 +38,8 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
       region: 'Karnataka',
       isolatesTested: 13,
       resistanceRate: 69,
+      trend7d: 12.4,
+      trend30d: 8.1,
       isSevere: true,
     ),
     _PathogenResistanceRow(
@@ -41,6 +48,8 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
       region: 'Karnataka',
       isolatesTested: 4,
       resistanceRate: 54,
+      trend7d: -2.1,
+      trend30d: -4.5,
       isSevere: false,
     ),
     _PathogenResistanceRow(
@@ -49,16 +58,20 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
       region: 'Karnataka',
       isolatesTested: 3,
       resistanceRate: 49,
+      trend7d: 3.8,
+      trend30d: -1.2,
       isSevere: false,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width >= 1050;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isWide = screenWidth >= 1050;
+    final isMobile = screenWidth < 600;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(28),
+      padding: EdgeInsets.all(isMobile ? 16 : 28),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1200),
         child: Column(
@@ -86,15 +99,13 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
 
             // Two main content cards
             if (isWide)
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(flex: 3, child: _buildPathogenTableCard()),
-                    const SizedBox(width: 20),
-                    Expanded(flex: 2, child: _buildPrescriptionDensityChartCard()),
-                  ],
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: _buildPathogenTableCard()),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 2, child: _buildPrescriptionDensityChartCard()),
+                ],
               )
             else ...[
               _buildPathogenTableCard(),
@@ -109,42 +120,55 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
 
   Widget _buildKpiRow() {
     return LayoutBuilder(builder: (context, constraints) {
-      final isCompact = constraints.maxWidth < 800;
+      final isMobile = constraints.maxWidth < 600;
+      final isTablet = constraints.maxWidth >= 600 && constraints.maxWidth < 950;
+      final perRow = isMobile ? 1 : (isTablet ? 2 : 4);
+      final itemWidth = (constraints.maxWidth - 16 * (perRow - 1)) / perRow;
+
       return Wrap(
         spacing: 16,
         runSpacing: 16,
         children: [
           _kpiCard(
-            width: isCompact ? (constraints.maxWidth - 16) / 2 : (constraints.maxWidth - 48) / 4,
+            width: itemWidth,
             number: '3',
             numberColor: const Color(0xFFE02424),
             label: 'Active AMR Signals',
             icon: Icons.shield_outlined,
             iconColor: const Color(0xFFE02424),
+            delta7d: 4.2,
+            delta30d: -1.5,
           ),
           _kpiCard(
-            width: isCompact ? (constraints.maxWidth - 16) / 2 : (constraints.maxWidth - 48) / 4,
+            width: itemWidth,
             number: '42',
             numberColor: AppColors.textPrimary,
             label: 'Total Isolates Logged',
             icon: Icons.show_chart,
             iconColor: const Color(0xFF0694A2),
+            delta7d: 12.4,
+            delta30d: 8.1,
+            higherIsWorse: false,
           ),
           _kpiCard(
-            width: isCompact ? (constraints.maxWidth - 16) / 2 : (constraints.maxWidth - 48) / 4,
+            width: itemWidth,
             number: '24',
             numberColor: AppColors.textPrimary,
             label: 'Resistant Isolates',
             icon: Icons.medication_outlined,
             iconColor: const Color(0xFFFF5722),
+            delta7d: 3.8,
+            delta30d: -1.2,
           ),
           _kpiCard(
-            width: isCompact ? (constraints.maxWidth - 16) / 2 : (constraints.maxWidth - 48) / 4,
+            width: itemWidth,
             number: '61%',
             numberColor: AppColors.textPrimary,
             label: 'Antibiotic Prescription Density',
             icon: Icons.trending_up,
             iconColor: const Color(0xFF7E3AF2),
+            delta7d: -2.1,
+            delta30d: -4.5,
           ),
         ],
       );
@@ -158,6 +182,9 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
     required String label,
     required IconData icon,
     required Color iconColor,
+    required double delta7d,
+    required double delta30d,
+    bool higherIsWorse = true,
   }) {
     return Container(
       width: width,
@@ -184,7 +211,7 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
               Icon(icon, size: 20, color: iconColor),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             label,
             style: const TextStyle(
@@ -192,6 +219,12 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
               fontWeight: FontWeight.w500,
               color: AppColors.textSecondary,
             ),
+          ),
+          const SizedBox(height: 10),
+          DualTrendRow(
+            delta7d: delta7d,
+            delta30d: delta30d,
+            higherIsWorse: higherIsWorse,
           ),
         ],
       ),
@@ -222,22 +255,24 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
             scrollDirection: Axis.horizontal,
             child: DataTable(
               headingRowColor: WidgetStateProperty.all(const Color(0xFFF9FAFB)),
+              headingRowHeight: 46,
               headingTextStyle: const TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.5,
                 color: AppColors.textMuted,
               ),
-              dataRowMinHeight: 52,
-              dataRowMaxHeight: 56,
+              dataRowMinHeight: 44,
+              dataRowMaxHeight: 48,
               horizontalMargin: 12,
-              columnSpacing: 24,
+              columnSpacing: 18,
               columns: const [
                 DataColumn(label: Text('PATHOGEN')),
                 DataColumn(label: Text('ANTIBIOTIC\nCLASS / NAME')),
                 DataColumn(label: Text('REGION')),
                 DataColumn(label: Text('ISOLATES\nTESTED')),
                 DataColumn(label: Text('RESISTANCE\nRATE')),
+                DataColumn(label: Text('TREND\n(7d / 30d)')),
               ],
               rows: _pathogenRows.map((r) {
                 final barColor = r.isSevere ? const Color(0xFFE02424) : const Color(0xFFE65100);
@@ -296,6 +331,13 @@ class _AMRWatchScreenState extends State<AMRWatchScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    DataCell(
+                      DualTrendRow(
+                        delta7d: r.trend7d,
+                        delta30d: r.trend30d,
+                        higherIsWorse: true,
                       ),
                     ),
                   ],
@@ -519,6 +561,8 @@ class _PathogenResistanceRow {
   final String region;
   final int isolatesTested;
   final int resistanceRate;
+  final double trend7d;
+  final double trend30d;
   final bool isSevere;
 
   const _PathogenResistanceRow({
@@ -527,6 +571,8 @@ class _PathogenResistanceRow {
     required this.region,
     required this.isolatesTested,
     required this.resistanceRate,
+    required this.trend7d,
+    required this.trend30d,
     required this.isSevere,
   });
 }

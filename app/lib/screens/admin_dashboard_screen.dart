@@ -248,57 +248,61 @@ class _AdminDashboardContent extends StatelessWidget {
   }
 
   Widget _buildKpiCardsRow(AdminKpiData kpi) {
-    return Row(
-      children: [
-        Expanded(
-          child: _KpiCard(
-            title: 'Total Disease Cases',
-            value: '24,532',
-            changeText: '▲ 12.4% vs last 7 days',
-            isPositive: true,
-            icon: Icons.personal_injury_outlined,
-            iconBg: const Color(0xFFEFF6FF),
-            iconColor: const Color(0xFF3B82F6),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _KpiCard(
-            title: 'Total Facilities Reporting',
-            value: '1,248',
-            changeText: '▲ 8.7% vs last 7 days',
-            isPositive: true,
-            icon: Icons.local_hospital_outlined,
-            iconBg: const Color(0xFFECFDF5),
-            iconColor: const Color(0xFF10B981),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _KpiCard(
-            title: 'AMR Resistance Rate (All)',
-            value: '28.7%',
-            changeText: '▲ 6.3% vs last 7 days',
-            isPositive: false,
-            icon: Icons.science_outlined,
-            iconBg: const Color(0xFFF3E8FF),
-            iconColor: const Color(0xFFA855F7),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _KpiCard(
-            title: 'Active Alerts',
-            value: '12',
-            changeText: '▲ 3 new vs last 7 days',
-            isPositive: false,
-            icon: Icons.warning_amber_rounded,
-            iconBg: const Color(0xFFFFFBEB),
-            iconColor: const Color(0xFFF59E0B),
-          ),
-        ),
-      ],
-    );
+    final cards = [
+      _KpiCard(
+        title: 'Total Disease Cases',
+        value: '24,532',
+        changeText: '▲ 12.4% vs last 7 days',
+        isPositive: true,
+        icon: Icons.personal_injury_outlined,
+        iconBg: const Color(0xFFEFF6FF),
+        iconColor: const Color(0xFF3B82F6),
+      ),
+      _KpiCard(
+        title: 'Total Facilities Reporting',
+        value: '1,248',
+        changeText: '▲ 8.7% vs last 7 days',
+        isPositive: true,
+        icon: Icons.local_hospital_outlined,
+        iconBg: const Color(0xFFECFDF5),
+        iconColor: const Color(0xFF10B981),
+      ),
+      _KpiCard(
+        title: 'AMR Resistance Rate (All)',
+        value: '28.7%',
+        changeText: '▲ 6.3% vs last 7 days',
+        isPositive: false,
+        icon: Icons.science_outlined,
+        iconBg: const Color(0xFFF3E8FF),
+        iconColor: const Color(0xFFA855F7),
+      ),
+      _KpiCard(
+        title: 'Active Alerts',
+        value: '12',
+        changeText: '▲ 3 new vs last 7 days',
+        isPositive: false,
+        icon: Icons.warning_amber_rounded,
+        iconBg: const Color(0xFFFFFBEB),
+        iconColor: const Color(0xFFF59E0B),
+      ),
+    ];
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final perRow = constraints.maxWidth >= 950 ? 4 : (constraints.maxWidth >= 500 ? 2 : 1);
+      final itemWidth = (constraints.maxWidth - 16 * (perRow - 1)) / perRow;
+
+      return Wrap(
+        spacing: 16,
+        runSpacing: 16,
+        children: [
+          for (final card in cards)
+            SizedBox(
+              width: itemWidth,
+              child: card,
+            ),
+        ],
+      );
+    });
   }
 
   Widget _buildDiseaseTrendCard(List<DiseaseTrendPoint> points) {

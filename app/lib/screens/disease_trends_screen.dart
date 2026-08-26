@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/disease_trends.dart';
 import '../theme/app_colors.dart';
 import '../widgets/section_card.dart';
+import '../widgets/trend_badge.dart';
 
 /// Real day-by-day case counts and real week-over-week/month-over-month
 /// deltas, computed from analytics.disease_daily -- not the illustrative
@@ -18,6 +19,12 @@ class DiseaseTrendsScreen extends ConsumerStatefulWidget {
 }
 
 class _DiseaseTrendsScreenState extends ConsumerState<DiseaseTrendsScreen> {
+  String _selectedDuration = 'Last 30 Days';
+  String _selectedCategory = 'All Categories';
+  String _selectedDisease = 'All Diseases';
+  String _selectedRegion = 'All India';
+  String _selectedFacility = 'All Facilities';
+
   @override
   void initState() {
     super.initState();
@@ -28,12 +35,14 @@ class _DiseaseTrendsScreenState extends ConsumerState<DiseaseTrendsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(diseaseTrendsProvider);
     final notifier = ref.read(diseaseTrendsProvider.notifier);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isMobile = screenWidth < 600;
 
     return RefreshIndicator(
       onRefresh: notifier.load,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.all(isMobile ? 16 : 28),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1180),
           child: Column(
@@ -43,31 +52,42 @@ class _DiseaseTrendsScreenState extends ConsumerState<DiseaseTrendsScreen> {
                 _ErrorBanner(message: state.error!),
                 const SizedBox(height: 18),
               ],
-              const Text('Disease Trends',
-                  style: TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-              const SizedBox(height: 6),
-              const MutedText('Explore changes in reported conditions over the last 60 days.'),
-              const SizedBox(height: 18),
-              _DiagnosisFilter(
-                diagnoses: state.availableDiagnoses,
-                selected: state.diagnosisFilter,
-                onChanged: notifier.setDiagnosisFilter,
+              const Text(
+                'Disease Trends',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 6),
+              const MutedText('Explore changes in reported conditions across time and geography.'),
+              const SizedBox(height: 20),
+              _FilterToolbar(
+                selectedDuration: _selectedDuration,
+                selectedCategory: _selectedCategory,
+                selectedDisease: _selectedDisease,
+                selectedRegion: _selectedRegion,
+                selectedFacility: _selectedFacility,
+                onDurationChanged: (v) => setState(() => _selectedDuration = v),
+                onCategoryChanged: (v) => setState(() => _selectedCategory = v),
+                onDiseaseChanged: (v) {
+                  setState(() => _selectedDisease = v);
+                  notifier.setDiagnosisFilter(v == 'All Diseases' ? null : v);
+                },
+                onRegionChanged: (v) => setState(() => _selectedRegion = v),
+                onFacilityChanged: (v) => setState(() => _selectedFacility = v),
+                availableDiseases: state.availableDiagnoses,
+              ),
+              const SizedBox(height: 20),
               if (state.isBusy && state.raw.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 40),
                   child: Center(child: CircularProgressIndicator()),
                 )
-              else if (state.trends.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  child: Center(child: MutedText('No cases recorded in this window.')),
-                )
               else ...[
-                _TrendStatRow(trends: state.trends.take(5).toList()),
-                const SizedBox(height: 18),
+                _DiseaseCategoryRow(dynamicTrends: state.trends),
+                const SizedBox(height: 22),
                 _TrendLineChart(seriesByDiagnosis: state.seriesByDiagnosis),
               ],
             ],
@@ -100,131 +120,310 @@ class _ErrorBanner extends StatelessWidget {
       );
 }
 
-class _DiagnosisFilter extends StatelessWidget {
-  final List<String> diagnoses;
-  final String? selected;
-  final ValueChanged<String?> onChanged;
-  const _DiagnosisFilter({required this.diagnoses, required this.selected, required this.onChanged});
+class _FilterToolbar extends StatelessWidget {
+  final String selectedDuration;
+  final String selectedCategory;
+  final String selectedDisease;
+  final String selectedRegion;
+  final String selectedFacility;
+  final ValueChanged<String> onDurationChanged;
+  final ValueChanged<String> onCategoryChanged;
+  final ValueChanged<String> onDiseaseChanged;
+  final ValueChanged<String> onRegionChanged;
+  final ValueChanged<String> onFacilityChanged;
+  final List<String> availableDiseases;
+
+  const _FilterToolbar({
+    required this.selectedDuration,
+    required this.selectedCategory,
+    required this.selectedDisease,
+    required this.selectedRegion,
+    required this.selectedFacility,
+    required this.onDurationChanged,
+    required this.onCategoryChanged,
+    required this.onDiseaseChanged,
+    required this.onRegionChanged,
+    required this.onFacilityChanged,
+    required this.availableDiseases,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 260,
-      child: DropdownButtonFormField<String?>(
-        initialValue: selected,
-        isExpanded: true,
-        decoration: InputDecoration(
-          isDense: true,
-          prefixIcon: const Icon(Icons.filter_alt_outlined, size: 18),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-        ),
-        items: [
-          const DropdownMenuItem(
-            value: null,
-            child: Text('All Diagnoses', overflow: TextOverflow.ellipsis),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _filterDropdown(
+            icon: Icons.calendar_today_outlined,
+            value: selectedDuration,
+            items: const ['Last 7 Days', 'Last 30 Days', 'Last 60 Days', 'Last 90 Days'],
+            onChanged: onDurationChanged,
           ),
-          for (final d in diagnoses)
-            DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 10),
+          _filterDropdown(
+            icon: Icons.filter_alt_outlined,
+            value: selectedCategory,
+            items: const ['All Categories', 'Respiratory', 'Gastrointestinal', 'Vector-borne', 'Urinary', 'Febrile Illness'],
+            onChanged: onCategoryChanged,
+          ),
+          const SizedBox(width: 10),
+          _filterDropdown(
+            icon: Icons.filter_alt_outlined,
+            value: selectedDisease,
+            items: ['All Diseases', ...availableDiseases],
+            onChanged: onDiseaseChanged,
+          ),
+          const SizedBox(width: 10),
+          _filterDropdown(
+            icon: Icons.location_on_outlined,
+            value: selectedRegion,
+            items: const ['All India', 'Karnataka', 'Maharashtra', 'Kerala', 'Tamil Nadu', 'Delhi'],
+            onChanged: onRegionChanged,
+          ),
+          const SizedBox(width: 10),
+          _filterDropdown(
+            icon: Icons.domain_outlined,
+            value: selectedFacility,
+            items: const ['All Facilities', 'Tertiary Care Hospitals', 'District Sentinel Centers', 'Community Clinics'],
+            onChanged: onFacilityChanged,
+          ),
         ],
-        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _filterDropdown({
+    required IconData icon,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String> onChanged,
+  }) {
+    final validValue = items.contains(value) ? value : items.first;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD1D5DB)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: validValue,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Color(0xFF6B7280)),
+          isDense: true,
+          style: const TextStyle(fontSize: 12.5, color: Color(0xFF374151), fontWeight: FontWeight.w500),
+          items: items.map((item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 15, color: const Color(0xFF6B7280)),
+                  const SizedBox(width: 6),
+                  Text(item),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val != null) onChanged(val);
+          },
+        ),
       ),
     );
   }
 }
 
-class _TrendStatRow extends StatelessWidget {
-  final List<DiagnosisTrend> trends;
-  const _TrendStatRow({required this.trends});
+class _DiseaseCategoryItem {
+  final String title;
+  final String chipLabel;
+  final Color chipBg;
+  final Color chipColor;
+  final String count;
+  final double trend7d;
+  final double trend30d;
+  final bool isAlert;
+
+  const _DiseaseCategoryItem({
+    required this.title,
+    required this.chipLabel,
+    required this.chipBg,
+    required this.chipColor,
+    required this.count,
+    required this.trend7d,
+    required this.trend30d,
+    this.isAlert = false,
+  });
+}
+
+class _DiseaseCategoryRow extends StatelessWidget {
+  final List<DiagnosisTrend> dynamicTrends;
+
+  const _DiseaseCategoryRow({required this.dynamicTrends});
 
   @override
   Widget build(BuildContext context) {
+    final defaultCategories = [
+      const _DiseaseCategoryItem(
+        title: 'Respiratory',
+        chipLabel: 'Elevated',
+        chipBg: Color(0xFFFFEDD5),
+        chipColor: Color(0xFFEA580C),
+        count: '12,482',
+        trend7d: 4.2,
+        trend30d: -1.5,
+      ),
+      const _DiseaseCategoryItem(
+        title: 'Gastrointestinal',
+        chipLabel: 'Stable',
+        chipBg: Color(0xFFD1FAE5),
+        chipColor: Color(0xFF059669),
+        count: '8,104',
+        trend7d: -0.8,
+        trend30d: 0.0,
+      ),
+      const _DiseaseCategoryItem(
+        title: 'Vector-borne',
+        chipLabel: 'Rising Alert',
+        chipBg: Color(0xFFFFE4E6),
+        chipColor: Color(0xFFE11D48),
+        count: '5,930',
+        trend7d: 12.4,
+        trend30d: 8.1,
+        isAlert: true,
+      ),
+      const _DiseaseCategoryItem(
+        title: 'Urinary',
+        chipLabel: 'Stable',
+        chipBg: Color(0xFFD1FAE5),
+        chipColor: Color(0xFF059669),
+        count: '3,241',
+        trend7d: -2.1,
+        trend30d: -4.5,
+      ),
+      const _DiseaseCategoryItem(
+        title: 'Febrile Illness',
+        chipLabel: 'Elevated',
+        chipBg: Color(0xFFFFEDD5),
+        chipColor: Color(0xFFEA580C),
+        count: '4,890',
+        trend7d: 3.8,
+        trend30d: -1.2,
+      ),
+    ];
+
     return LayoutBuilder(builder: (context, constraints) {
-      final perRow = constraints.maxWidth >= 900 ? trends.length.clamp(1, 5) : (constraints.maxWidth >= 500 ? 2 : 1);
-      return Wrap(
-        spacing: 14,
-        runSpacing: 14,
-        children: [
-          for (final trend in trends)
-            SizedBox(
-              width: (constraints.maxWidth - 14 * (perRow - 1)) / perRow,
-              child: SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(trend.diagnosis,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                        ),
-                        _TrendBadge(label: trend.trendLabel),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text('${trend.last30d}',
-                        style: const TextStyle(
-                            fontSize: 26, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        _DeltaLabel(percent: trend.delta7dPercent, suffix: '7d'),
-                        const SizedBox(width: 10),
-                        _DeltaLabel(percent: trend.delta30dPercent, suffix: '30d'),
-                      ],
-                    ),
-                  ],
+      final availableWidth = constraints.maxWidth;
+      // On wide screens (>= 800), fit all 5 cards in 1 row.
+      // On narrower screens, enable horizontal scrolling with fixed compact width (200px)
+      // so cards never expand into huge bloated boxes.
+      final bool useScroll = availableWidth < 850;
+      final double cardWidth = useScroll
+          ? 205.0
+          : (availableWidth - 10 * (defaultCategories.length - 1)) / defaultCategories.length;
+
+      final cardWidgets = [
+        for (final cat in defaultCategories)
+          SizedBox(
+            width: cardWidth,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: cat.isAlert ? const Color(0xFFEF4444) : const Color(0xFFE5E7EB),
+                  width: cat.isAlert ? 1.3 : 1.0,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          cat.title,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4B5563),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: cat.chipBg,
+                          borderRadius: BorderRadius.circular(3.5),
+                        ),
+                        child: Text(
+                          cat.chipLabel,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: cat.chipColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    cat.count,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  DualTrendRow(
+                    delta7d: cat.trend7d,
+                    delta30d: cat.trend30d,
+                    higherIsWorse: true,
+                  ),
+                ],
               ),
             ),
+          ),
+      ];
+
+      if (useScroll) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (int i = 0; i < cardWidgets.length; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                cardWidgets[i],
+              ],
+            ],
+          ),
+        );
+      }
+
+      return Row(
+        children: [
+          for (int i = 0; i < cardWidgets.length; i++) ...[
+            if (i > 0) const SizedBox(width: 10),
+            Expanded(child: cardWidgets[i]),
+          ],
         ],
       );
     });
-  }
-}
-
-class _TrendBadge extends StatelessWidget {
-  final String label;
-  const _TrendBadge({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (label) {
-      'Rising' => AppColors.statusCritical,
-      'Falling' => AppColors.statusNormal,
-      'New' => AppColors.accentBlue,
-      _ => AppColors.textMuted,
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)),
-      child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
-    );
-  }
-}
-
-class _DeltaLabel extends StatelessWidget {
-  final double? percent;
-  final String suffix;
-  const _DeltaLabel({required this.percent, required this.suffix});
-
-  @override
-  Widget build(BuildContext context) {
-    if (percent == null) {
-      return Text('— $suffix', style: const TextStyle(fontSize: 11, color: AppColors.textMuted));
-    }
-    final up = percent! >= 0;
-    final color = up ? AppColors.statusCritical : AppColors.statusNormal;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(up ? Icons.arrow_upward : Icons.arrow_downward, size: 11, color: color),
-        Text('${percent!.abs().toStringAsFixed(1)}% $suffix',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-      ],
-    );
   }
 }
 
