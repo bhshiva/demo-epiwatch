@@ -268,14 +268,17 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
 
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                children: [
-                  _buildTabButton(0, 'Quick Templates', Icons.collections_bookmark_outlined),
-                  const SizedBox(width: 8),
-                  _buildTabButton(1, 'Google Lens / Scan', Icons.camera_alt_outlined),
-                  const SizedBox(width: 8),
-                  _buildTabButton(2, 'Paste / Type Notes', Icons.edit_note_outlined),
-                ],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildTabButton(0, 'Quick Templates', Icons.collections_bookmark_outlined),
+                    const SizedBox(width: 8),
+                    _buildTabButton(1, 'Google Lens / Scan', Icons.camera_alt_outlined),
+                    const SizedBox(width: 8),
+                    _buildTabButton(2, 'Paste / Type Notes', Icons.edit_note_outlined),
+                  ],
+                ),
               ),
             ),
 
@@ -305,42 +308,40 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
 
   Widget _buildTabButton(int index, String label, IconData icon) {
     final isSelected = _selectedTab == index;
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedTab = index;
-          });
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.accentTeal : AppColors.bgTertiary,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? AppColors.accentTeal : AppColors.border,
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedTab = index;
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accentTeal : AppColors.bgTertiary,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.accentTeal : AppColors.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : AppColors.textSecondary,
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Colors.white : AppColors.textPrimary,
               ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? Colors.white : AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -115,14 +115,14 @@ class PatientSearchResult(BaseModel):
 
     patient_id: uuid.UUID
     full_name: str
-    exact_age: int | None
-    age_group: str
-    sex: str
-    district: str
-    facility_mrn: str | None
+    exact_age: int | None = None
+    age_group: str | None = "25-44"
+    sex: str | None = "Other"
+    district: str | None = "Pune"
+    facility_mrn: str | None = None
     abha_id: str | None = None
-    report_count: int
-    last_visit: date | None
+    report_count: int = 0
+    last_visit: date | None = None
 
 
 class PatientHistoryEntry(BaseModel):

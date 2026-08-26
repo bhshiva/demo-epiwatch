@@ -65,9 +65,10 @@ class _PatientRecordsScreenState extends ConsumerState<PatientRecordsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(patientRecordsProvider);
     final isWide = MediaQuery.sizeOf(context).width >= 1000;
+    final isPhone = MediaQuery.sizeOf(context).width < 600;
 
     return Padding(
-      padding: const EdgeInsets.all(28),
+      padding: EdgeInsets.all(isPhone ? 16 : 28),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1180),
         child: Column(
