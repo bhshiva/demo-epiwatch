@@ -13,3 +13,4 @@ neo4j
 scikit-learn
 joblib
 matplotlib
+google-genai
