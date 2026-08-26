@@ -175,7 +175,6 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Bar
           InkWell(
             onTap: () {
               setState(() {
@@ -267,7 +266,6 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
           if (_isExpanded) ...[
             const Divider(height: 1, color: AppColors.border),
 
-            // Tab Mode Switcher
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(
@@ -281,7 +279,6 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
               ),
             ),
 
-            // Tab Content
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: Column(
@@ -291,7 +288,6 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                   if (_selectedTab == 1) _buildGoogleLensScanTab(isDoctor),
                   if (_selectedTab == 2) _buildManualTextTab(isDoctor),
 
-                  // Structured Extraction Preview (Decramped Cards)
                   if (_lastParsedResult != null) ...[
                     const SizedBox(height: 16),
                     const Divider(height: 1, color: AppColors.border),
@@ -608,7 +604,6 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
         const SizedBox(height: 10),
 
         if (isDoctor) ...[
-          // Doctor Demographics Card
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -645,7 +640,6 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
             ),
           ),
         ] else ...[
-          // Lab Isolate & AST Matrix Card
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(

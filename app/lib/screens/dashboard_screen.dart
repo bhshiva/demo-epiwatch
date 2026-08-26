@@ -341,41 +341,84 @@ class _KpiRow extends StatelessWidget {
       (alertCount.toString(), 'Facility Alerts', AppColors.accentMint, 3.8, -1.2, true),
     ];
     return LayoutBuilder(builder: (context, constraints) {
-      final isMobile = constraints.maxWidth < 600;
-      final isTablet = constraints.maxWidth >= 600 && constraints.maxWidth < 950;
-      final perRow = isMobile ? 1 : (isTablet ? 2 : 4);
+      final availableWidth = constraints.maxWidth;
+      final bool useScroll = availableWidth < 800;
+      final double cardWidth = useScroll
+          ? 205.0
+          : (availableWidth - 10 * (tiles.length - 1)) / tiles.length;
 
-      return Wrap(
-        spacing: 16,
-        runSpacing: 16,
-        children: [
-          for (final t in tiles)
-            SizedBox(
-              width: (constraints.maxWidth - 16 * (perRow - 1)) / perRow,
-              child: SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      t.$1,
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        color: t.$3,
-                      ),
+      final cardWidgets = [
+        for (final t in tiles)
+          SizedBox(
+            width: cardWidth,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    t.$1,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: t.$3,
+                      letterSpacing: -0.4,
                     ),
-                    const SizedBox(height: 4),
-                    MutedText(t.$2),
-                    const SizedBox(height: 10),
-                    DualTrendRow(
-                      delta7d: t.$4,
-                      delta30d: t.$5,
-                      higherIsWorse: t.$6,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    t.$2,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 6),
+                  DualTrendRow(
+                    delta7d: t.$4,
+                    delta30d: t.$5,
+                    higherIsWorse: t.$6,
+                  ),
+                ],
               ),
             ),
+          ),
+      ];
+
+      if (useScroll) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (int i = 0; i < cardWidgets.length; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                cardWidgets[i],
+              ],
+            ],
+          ),
+        );
+      }
+
+      return Row(
+        children: [
+          for (int i = 0; i < cardWidgets.length; i++) ...[
+            if (i > 0) const SizedBox(width: 10),
+            Expanded(child: cardWidgets[i]),
+          ],
         ],
       );
     });
