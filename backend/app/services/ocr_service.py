@@ -37,16 +37,31 @@ def extract_with_google_vision_ocr(image_base64: str, document_type: str) -> str
         client = genai.Client(api_key=api_key)
         
         prompt = (
-            "You are a medical document OCR engine. Transcribe the patient demographics, "
-            "clinical complaints, diagnosis, symptoms, specimen, pathogen, and full AST antibiotic "
-            "susceptibility matrix from this medical document accurately."
+            "You are an expert clinical and medical document OCR engine.\n\n"
+            "TASK:\n"
+            "1. Inspect the provided image carefully.\n"
+            "2. If this image is NOT a medical document (for example: math equations, physics, homework, "
+            "code, diagrams, random notes, receipts, memes, or general non-healthcare content), "
+            "respond ONLY with:\nNON_MEDICAL_DOCUMENT\n\n"
+            "3. If this IS a valid medical prescription, hospital slip, or doctor's clinical notes, "
+            "transcribe all text accurately:\n"
+            "- Patient Name, Age, Sex, District/City\n"
+            "- Chief Complaints, Symptoms, Duration\n"
+            "- Clinical Diagnosis / Infection Syndrome / Origin\n"
+            "- Prescriptions (Medicines, Dosages, Frequency, Days)\n"
+            "- Outcome / Advice"
         )
         if document_type == "lab_isolate":
             prompt = (
-                "You are an expert clinical microbiology OCR engine. Transcribe the accession number, "
-                "specimen type, culture result, identified pathogen organism, and the complete tabular "
-                "Antimicrobial Susceptibility Test (AST) panel listing every antibiotic, disc diffusion zone diameter (mm), "
-                "MIC value (ug/mL), and Susceptible/Intermediate/Resistant (SIR) interpretation accurately."
+                "You are an expert clinical microbiology OCR engine.\n\n"
+                "TASK:\n"
+                "1. Inspect the provided image carefully.\n"
+                "2. If this image is NOT a microbiology lab or AST susceptibility report, "
+                "respond ONLY with:\nNON_MEDICAL_DOCUMENT\n\n"
+                "3. If this IS a lab report, transcribe:\n"
+                "- Accession / Sample ID, Specimen Type\n"
+                "- Culture Result, Pathogen / Organism identified\n"
+                "- Complete AST Susceptibility Panel (Antibiotic, Zone diameter in mm, MIC in ug/mL, and Result: Susceptible/Intermediate/Resistant)"
             )
 
         # Remove header if present (e.g. data:image/png;base64,...)
@@ -63,16 +78,45 @@ def extract_with_google_vision_ocr(image_base64: str, document_type: str) -> str
                 prompt,
             ],
         )
-        return response.text or ""
+        return (response.text or "").strip()
     except Exception as e:
-        # Graceful fallback to regex/local parsing
         return ""
 
 
 def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local OCR") -> Dict[str, Any]:
     """
     Parses unstructured or semi-structured clinical text from an OCR scan of a doctor's report.
+    Enforces strict relevance checks to reject non-medical images or formulas.
     """
+    trimmed = text.strip()
+    if not trimmed or trimmed == "NON_MEDICAL_DOCUMENT":
+        return {
+            "raw_text": text,
+            "ocr_engine": ocr_engine,
+            "extracted": {
+                "full_name": None,
+                "exact_age": None,
+                "age_group": None,
+                "sex": "Other",
+                "district": "Pune",
+                "complaints": None,
+                "diagnosis": None,
+                "diagnosis_status": "Suspected",
+                "infection_syndrome": None,
+                "infection_origin": "Community-acquired",
+                "patient_outcome": "Under review",
+                "symptoms": [],
+            },
+            "intelligence_audit": {
+                "plausibility_score": 0,
+                "status": "Invalid Document",
+                "is_valid": False,
+                "summary": "Non-medical or unreadable document. No clinical diagnosis or prescription data detected.",
+                "findings": ["NON_MEDICAL_DOCUMENT: The scanned content does not contain clinical entities, patient records, or medical prescriptions."],
+                "mdr_flag": False,
+            },
+        }
+
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     full_text = " ".join(lines)
 
@@ -126,6 +170,40 @@ def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local 
     # Extract symptoms from free text
     extracted_symptoms = normalize_symptoms(full_text)
 
+    # Check for medical keywords / prescription drugs to verify this is a real clinical document
+    has_clinical_keywords = any(kw in full_text.lower() for kw in [
+        "patient", "dr.", "doctor", "hospital", "clinic", "diagnosis", "rx", "tab", "cap", "mg", "syrup",
+        "fever", "cough", "pain", "infection", "complaint", "prescription", "symptoms", "dose", "bp:", "pulse"
+    ]) or bool(extracted_symptoms or extracted_diagnosis or extracted_complaints or extracted_name)
+
+    if not has_clinical_keywords:
+        return {
+            "raw_text": text,
+            "ocr_engine": ocr_engine,
+            "extracted": {
+                "full_name": None,
+                "exact_age": None,
+                "age_group": None,
+                "sex": "Other",
+                "district": "Pune",
+                "complaints": None,
+                "diagnosis": None,
+                "diagnosis_status": "Suspected",
+                "infection_syndrome": None,
+                "infection_origin": "Community-acquired",
+                "patient_outcome": "Under review",
+                "symptoms": [],
+            },
+            "intelligence_audit": {
+                "plausibility_score": 0,
+                "status": "Invalid Document",
+                "is_valid": False,
+                "summary": "Non-clinical document detected. Mathematical formulas, general notes, or non-medical images cannot be processed.",
+                "findings": ["NON_MEDICAL_DOCUMENT: Scanned image contains no medical or prescription entities."],
+                "mdr_flag": False,
+            },
+        }
+
     # Normalization
     norm_sex, _ = normalize_sex(extracted_sex)
     norm_district, _ = normalize_district(extracted_district)
@@ -154,7 +232,7 @@ def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local 
             "age_group": age_group,
             "sex": norm_sex,
             "district": norm_district,
-            "complaints": extracted_complaints or full_text[:120],
+            "complaints": extracted_complaints or (full_text[:120] if has_clinical_keywords else "Clinical consultation note"),
             "diagnosis": extracted_diagnosis or norm_syndrome,
             "diagnosis_status": "Confirmed" if extracted_diagnosis else "Suspected",
             "infection_syndrome": norm_syndrome,
@@ -176,7 +254,33 @@ def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local 
 def parse_raw_ast_text(text: str, ocr_engine: str = "Google Vision & Local OCR") -> Dict[str, Any]:
     """
     Parses unstructured or tabular microbiology culture & AST report text from an OCR scan.
+    Enforces validation to reject non-microbiology documents.
     """
+    trimmed = text.strip()
+    if not trimmed or trimmed == "NON_MEDICAL_DOCUMENT":
+        return {
+            "raw_text": text,
+            "ocr_engine": ocr_engine,
+            "extracted": {
+                "accession_no": None,
+                "test_date": date.today().isoformat(),
+                "specimen_type": None,
+                "culture_result": None,
+                "pathogen": None,
+                "infection_origin": "Community-acquired",
+                "ast_method": "Disk diffusion",
+                "ast_panel": [],
+            },
+            "intelligence_audit": {
+                "plausibility_score": 0,
+                "status": "Invalid Document",
+                "is_valid": False,
+                "summary": "Non-laboratory document detected. No microbiology or AST panels identified.",
+                "findings": ["NON_LAB_DOCUMENT: The provided file does not contain AST disk diffusion/MIC data or culture results."],
+                "mdr_flag": False,
+            },
+        }
+
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     full_text = " ".join(lines)
 
@@ -219,8 +323,10 @@ def parse_raw_ast_text(text: str, ocr_engine: str = "Google Vision & Local OCR")
         extracted_culture = "No growth"
     elif re.search(r"contaminated", full_text, re.IGNORECASE):
         extracted_culture = "Contaminated"
-    else:
+    elif extracted_pathogen or re.search(r"growth|isolated|organism", full_text, re.IGNORECASE):
         extracted_culture = "Growth - organism identified"
+    else:
+        extracted_culture = None
 
     # AST Table Line-by-line Parsing
     parsed_drugs = set()
@@ -267,6 +373,31 @@ def parse_raw_ast_text(text: str, ocr_engine: str = "Google Vision & Local OCR")
                     "method": "Disk diffusion",
                 })
 
+    # Strict check: is this a real microbiology report?
+    if not extracted_pathogen and not extracted_ast_panel and not extracted_specimen:
+        return {
+            "raw_text": text,
+            "ocr_engine": ocr_engine,
+            "extracted": {
+                "accession_no": None,
+                "test_date": date.today().isoformat(),
+                "specimen_type": None,
+                "culture_result": None,
+                "pathogen": None,
+                "infection_origin": "Community-acquired",
+                "ast_method": "Disk diffusion",
+                "ast_panel": [],
+            },
+            "intelligence_audit": {
+                "plausibility_score": 0,
+                "status": "Invalid Document",
+                "is_valid": False,
+                "summary": "Non-laboratory document. No pathogen, specimen, or AST panel detected.",
+                "findings": ["NON_LAB_DOCUMENT: The provided content contains no microbiology AST data."],
+                "mdr_flag": False,
+            },
+        }
+
     # Normalization
     norm_specimen, _, _ = normalize_specimen(extracted_specimen)
     norm_pathogen, _, _ = normalize_pathogen(extracted_pathogen)
@@ -285,7 +416,7 @@ def parse_raw_ast_text(text: str, ocr_engine: str = "Google Vision & Local OCR")
             "accession_no": extracted_accession or "ACC-2026-8801",
             "test_date": date.today().isoformat(),
             "specimen_type": norm_specimen,
-            "culture_result": extracted_culture,
+            "culture_result": extracted_culture or "Growth - organism identified",
             "pathogen": norm_pathogen,
             "infection_origin": "Community-acquired",
             "ast_method": extracted_ast_method,

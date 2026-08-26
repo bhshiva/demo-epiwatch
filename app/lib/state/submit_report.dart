@@ -733,6 +733,15 @@ class SubmitReportNotifier extends Notifier<SubmitReportState> {
   // --- OCR Ingestion & Clinical Intelligence Validation ---
 
   void applyOcrResult(OcrParseResult ocr) {
+    if (!ocr.intelligenceAudit.isValid && ocr.intelligenceAudit.plausibilityScore == 0) {
+      // Invalid / non-medical document -- only update the intelligence audit banner
+      state = state.copyWith(
+        intelligenceAudit: ocr.intelligenceAudit,
+        clearErrorMessage: true,
+      );
+      return;
+    }
+
     final ext = ocr.extracted;
     final extractedSymptoms = (ext['symptoms'] as List<dynamic>?)
             ?.map((e) => e.toString())
@@ -740,8 +749,8 @@ class SubmitReportNotifier extends Notifier<SubmitReportState> {
         <String>[];
 
     state = state.copyWith(
-      isRegisteringNewPatient: true,
-      clearSelectedPatient: true,
+      isRegisteringNewPatient: ext['full_name'] != null || state.isRegisteringNewPatient,
+      clearSelectedPatient: ext['full_name'] != null,
       newPatientName: ext['full_name'] as String? ?? state.newPatientName,
       patientAge: ext['exact_age']?.toString() ?? state.patientAge,
       patientSex: ext['sex'] as String? ?? state.patientSex,

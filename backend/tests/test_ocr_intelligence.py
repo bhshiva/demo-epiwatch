@@ -171,3 +171,24 @@ def test_ingestion_api_endpoints():
     assert res.status_code == 200
     iso_data = res.json()
     assert iso_data["status"] == "CRITICAL_ANOMALY"
+
+
+def test_non_medical_document_rejection():
+    # Math calculations / perceptron notes
+    math_text = """
+    x1 = [0, 0], x2 = [0, 1], x3 = [1, 0], x4 = [1, 1], w1 = [0.1, 0.2]
+    c = 1, d1 = 0, d2 = 0, d3 = 0, d4 = 1
+    net1 = w1^T x1 = [0.1 0.2] [0, 0]^T = 0
+    sgn(0) = 0
+    w2 = w1
+    w3 = [0.1, 0.2] - [0, 1] = [0.1, -0.8]
+    """
+    res = parse_raw_clinical_text(math_text)
+    assert res["intelligence_audit"]["is_valid"] is False
+    assert res["intelligence_audit"]["plausibility_score"] == 0
+    assert "NON_MEDICAL_DOCUMENT" in res["intelligence_audit"]["findings"][0]
+
+    ast_res = parse_raw_ast_text(math_text)
+    assert ast_res["intelligence_audit"]["is_valid"] is False
+    assert ast_res["intelligence_audit"]["plausibility_score"] == 0
+    assert "NON_LAB_DOCUMENT" in ast_res["intelligence_audit"]["findings"][0]

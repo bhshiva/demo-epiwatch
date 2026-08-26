@@ -11,13 +11,18 @@ class SectionCard extends StatelessWidget {
   const SectionCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(20),
-    this.margin,
+    this.padding = const EdgeInsets.all(24),
+    this.margin = const EdgeInsets.only(bottom: 24),
   });
 
   @override
   Widget build(BuildContext context) => Card(
         margin: margin,
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.border, width: 1),
+        ),
         child: Padding(padding: padding, child: child),
       );
 }

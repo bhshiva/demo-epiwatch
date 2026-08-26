@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/clinical_catalog.dart';
-import '../state/auth.dart';
 import '../state/submit_isolate.dart';
 import '../theme/app_colors.dart';
 import '../widgets/intelligence_audit_banner.dart';
-import '../widgets/ocr_ingestion_card.dart';
 import '../widgets/section_card.dart';
 
 /// Record Culture & Susceptibility: one organism per isolate, tested against
@@ -14,7 +12,8 @@ class SubmitIsolateScreen extends ConsumerStatefulWidget {
   const SubmitIsolateScreen({super.key});
 
   @override
-  ConsumerState<SubmitIsolateScreen> createState() => _SubmitIsolateScreenState();
+  ConsumerState<SubmitIsolateScreen> createState() =>
+      _SubmitIsolateScreenState();
 }
 
 class _SubmitIsolateScreenState extends ConsumerState<SubmitIsolateScreen> {
@@ -57,7 +56,10 @@ class _SubmitIsolateScreenState extends ConsumerState<SubmitIsolateScreen> {
     }
   }
 
-  Future<void> _pickDate(TextEditingController ctrl, void Function(String) onPicked) async {
+  Future<void> _pickDate(
+    TextEditingController ctrl,
+    void Function(String) onPicked,
+  ) async {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
@@ -92,24 +94,25 @@ class _SubmitIsolateScreenState extends ConsumerState<SubmitIsolateScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(state.isEditing ? 'Finalize Culture Result' : 'Record Culture & Susceptibility',
-                style: const TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const SizedBox(height: 7),
-            MutedText(state.isEditing
-                ? 'Completing accession ${state.accessionNo.isEmpty ? '—' : state.accessionNo} from the worklist. '
-                    'Submitting supersedes the pending result with this one.'
-                : 'One organism per isolate, tested against a panel of antibiotics. '
-                    'Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies.'),
-            const SizedBox(height: 22),
-            if (!state.isEditing)
-              OcrIngestionCard(
-                documentType: 'lab_isolate',
-                apiClient: ref.read(apiClientProvider),
-                onParsed: (result) {
-                  notifier.applyOcrResult(result);
-                },
+            Text(
+              state.isEditing
+                  ? 'Finalize Culture Result'
+                  : 'Record Culture & Susceptibility',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
               ),
+            ),
+            const SizedBox(height: 7),
+            MutedText(
+              state.isEditing
+                  ? 'Completing accession ${state.accessionNo.isEmpty ? '—' : state.accessionNo} from the worklist. '
+                        'Submitting supersedes the pending result with this one.'
+                  : 'One organism per isolate, tested against a panel of antibiotics. '
+                        'Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies.',
+            ),
+            const SizedBox(height: 22),
             if (state.intelligenceAudit != null)
               IntelligenceAuditBanner(
                 audit: state.intelligenceAudit!,
@@ -130,7 +133,8 @@ class _SubmitIsolateScreenState extends ConsumerState<SubmitIsolateScreen> {
                 specimenOtherCtrl: _specimenOtherCtrl,
                 onPickCollectionDate: () =>
                     _pickDate(_collectionDateCtrl, notifier.setCollectionDate),
-                onPickTestDate: () => _pickDate(_testDateCtrl, notifier.setTestDate),
+                onPickTestDate: () =>
+                    _pickDate(_testDateCtrl, notifier.setTestDate),
               ),
             ),
             SectionCard(
@@ -144,7 +148,11 @@ class _SubmitIsolateScreenState extends ConsumerState<SubmitIsolateScreen> {
             ),
             SectionCard(
               margin: const EdgeInsets.only(bottom: 18),
-              child: _DetailsSection(state: state, notifier: notifier, notesCtrl: _notesCtrl),
+              child: _DetailsSection(
+                state: state,
+                notifier: notifier,
+                notesCtrl: _notesCtrl,
+              ),
             ),
             SectionCard(
               margin: const EdgeInsets.only(bottom: 18),
@@ -170,7 +178,10 @@ class _SubmitIsolateScreenState extends ConsumerState<SubmitIsolateScreen> {
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : Text(state.isEditing ? 'Save Result' : 'Submit Result'),
                 ),
@@ -189,20 +200,35 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.statusCritical.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.statusCritical.withValues(alpha: 0.35)),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: AppColors.statusCritical.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
+        color: AppColors.statusCritical.withValues(alpha: 0.35),
+      ),
+    ),
+    child: Row(
+      children: [
+        const Icon(
+          Icons.error_outline,
+          color: AppColors.statusCritical,
+          size: 18,
         ),
-        child: Row(children: [
-          const Icon(Icons.error_outline, color: AppColors.statusCritical, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-              child: Text(message,
-                  style: const TextStyle(color: AppColors.statusCritical, fontSize: 13))),
-        ]),
-      );
+        SizedBox(
+          width: 320,
+
+          child: Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.statusCritical,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _FieldLabel extends StatelessWidget {
@@ -211,17 +237,20 @@ class _FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+    ),
+  );
 }
 
 InputDecoration _fieldDecoration({String? hint}) => InputDecoration(
-      isDense: true,
-      hintText: hint,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-    );
+  isDense: true,
+  hintText: hint,
+  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+);
 
 class _SpecimenSection extends StatelessWidget {
   final SubmitIsolateState state;
@@ -251,67 +280,82 @@ class _SpecimenSection extends StatelessWidget {
       children: [
         const SectionTitle('Specimen'),
         const SizedBox(height: 16),
-        LayoutBuilder(builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 640;
-          final fields = [
-            SizedBox(
-              width: wide ? (constraints.maxWidth - 40) / 3 : constraints.maxWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _FieldLabel('Accession No *'),
-                  TextField(
-                    controller: accessionCtrl,
-                    decoration: _fieldDecoration(),
-                    onChanged: notifier.setAccessionNo,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-              width: wide ? (constraints.maxWidth - 40) / 3 : constraints.maxWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _FieldLabel('Collection Date'),
-                  TextField(
-                    controller: collectionDateCtrl,
-                    readOnly: true,
-                    decoration: _fieldDecoration(hint: 'YYYY-MM-DD').copyWith(
-                      suffixIcon: const Icon(Icons.calendar_today_outlined, size: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 640;
+            final fields = [
+              SizedBox(
+                width: wide
+                    ? (constraints.maxWidth - 40) / 3
+                    : constraints.maxWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _FieldLabel('Accession No *'),
+                    TextField(
+                      controller: accessionCtrl,
+                      decoration: _fieldDecoration(),
+                      onChanged: notifier.setAccessionNo,
                     ),
-                    onTap: onPickCollectionDate,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            SizedBox(
-              width: wide ? (constraints.maxWidth - 40) / 3 : constraints.maxWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _FieldLabel('Test Date'),
-                  TextField(
-                    controller: testDateCtrl,
-                    readOnly: true,
-                    decoration: _fieldDecoration(hint: 'YYYY-MM-DD').copyWith(
-                      suffixIcon: const Icon(Icons.calendar_today_outlined, size: 16),
+              SizedBox(
+                width: wide
+                    ? (constraints.maxWidth - 40) / 3
+                    : constraints.maxWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _FieldLabel('Collection Date'),
+                    TextField(
+                      controller: collectionDateCtrl,
+                      readOnly: true,
+                      decoration: _fieldDecoration(hint: 'YYYY-MM-DD').copyWith(
+                        suffixIcon: const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
+                        ),
+                      ),
+                      onTap: onPickCollectionDate,
                     ),
-                    onTap: onPickTestDate,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ];
-          return Wrap(spacing: 20, runSpacing: 16, children: fields);
-        }),
+              SizedBox(
+                width: wide
+                    ? (constraints.maxWidth - 40) / 3
+                    : constraints.maxWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _FieldLabel('Test Date'),
+                    TextField(
+                      controller: testDateCtrl,
+                      readOnly: true,
+                      decoration: _fieldDecoration(hint: 'YYYY-MM-DD').copyWith(
+                        suffixIcon: const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
+                        ),
+                      ),
+                      onTap: onPickTestDate,
+                    ),
+                  ],
+                ),
+              ),
+            ];
+            return Wrap(spacing: 20, runSpacing: 16, children: fields);
+          },
+        ),
         const SizedBox(height: 16),
         const _FieldLabel('Specimen Type'),
         DropdownButtonFormField<String>(
           initialValue: state.specimenType.isEmpty ? null : state.specimenType,
           decoration: _fieldDecoration(),
           items: [
-            for (final v in ClinicalCatalog.specimenTypes) DropdownMenuItem(value: v, child: Text(v)),
+            for (final v in ClinicalCatalog.specimenTypes)
+              DropdownMenuItem(value: v, child: Text(v)),
           ],
           onChanged: (v) => notifier.setSpecimenType(v ?? ''),
         ),
@@ -350,10 +394,13 @@ class _CultureSection extends StatelessWidget {
         const SizedBox(height: 16),
         const _FieldLabel('Culture Result *'),
         DropdownButtonFormField<String>(
-          initialValue: state.cultureResult.isEmpty ? null : state.cultureResult,
+          initialValue: state.cultureResult.isEmpty
+              ? null
+              : state.cultureResult,
           decoration: _fieldDecoration(),
           items: [
-            for (final v in ClinicalCatalog.cultureResults) DropdownMenuItem(value: v, child: Text(v)),
+            for (final v in ClinicalCatalog.cultureResults)
+              DropdownMenuItem(value: v, child: Text(v)),
           ],
           onChanged: (v) => notifier.setCultureResult(v ?? ''),
         ),
@@ -368,17 +415,26 @@ class _CultureSection extends StatelessWidget {
         const SizedBox(height: 16),
         Row(
           children: [
-            Text('Pathogen${state.growthReported ? ' *' : ''}',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(
+              'Pathogen${state.growthReported ? ' *' : ''}',
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
           initialValue: state.pathogen.isEmpty ? null : state.pathogen,
           decoration: _fieldDecoration(
-              hint: state.growthReported ? null : 'Not applicable — no growth reported'),
+            hint: state.growthReported
+                ? null
+                : 'Not applicable — no growth reported',
+          ),
           items: [
-            for (final v in ClinicalCatalog.pathogens) DropdownMenuItem(value: v, child: Text(v)),
+            for (final v in ClinicalCatalog.pathogens)
+              DropdownMenuItem(value: v, child: Text(v)),
           ],
           onChanged: (v) => notifier.setPathogen(v ?? ''),
         ),
@@ -400,7 +456,11 @@ class _DetailsSection extends StatelessWidget {
   final SubmitIsolateNotifier notifier;
   final TextEditingController notesCtrl;
 
-  const _DetailsSection({required this.state, required this.notifier, required this.notesCtrl});
+  const _DetailsSection({
+    required this.state,
+    required this.notifier,
+    required this.notesCtrl,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -428,7 +488,8 @@ class _DetailsSection extends StatelessWidget {
           initialValue: state.status,
           decoration: _fieldDecoration(),
           items: [
-            for (final v in ClinicalCatalog.isolateStatuses) DropdownMenuItem(value: v, child: Text(v)),
+            for (final v in ClinicalCatalog.isolateStatuses)
+              DropdownMenuItem(value: v, child: Text(v)),
           ],
           onChanged: (v) => notifier.setStatus(v ?? state.status),
         ),
@@ -476,7 +537,9 @@ class _AstPanelSection extends StatelessWidget {
         if (state.panel.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 18),
-            child: MutedText('No antibiotics added yet. Add a drug or load the standard panel.'),
+            child: MutedText(
+              'No antibiotics added yet. Add a drug or load the standard panel.',
+            ),
           )
         else
           for (var i = 0; i < state.panel.length; i++)
@@ -496,7 +559,12 @@ class _AstRow extends StatefulWidget {
   final AstRowDraft row;
   final SubmitIsolateNotifier notifier;
 
-  const _AstRow({super.key, required this.index, required this.row, required this.notifier});
+  const _AstRow({
+    super.key,
+    required this.index,
+    required this.row,
+    required this.notifier,
+  });
 
   @override
   State<_AstRow> createState() => _AstRowState();
@@ -518,9 +586,15 @@ class _AstRowState extends State<_AstRow> {
   @override
   void didUpdateWidget(covariant _AstRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_micValueCtrl.text != widget.row.micValue) _micValueCtrl.text = widget.row.micValue;
-    if (_zoneCtrl.text != widget.row.zoneDiameter) _zoneCtrl.text = widget.row.zoneDiameter;
-    if (_antibioticCtrl.text != widget.row.antibiotic) _antibioticCtrl.text = widget.row.antibiotic;
+    if (_micValueCtrl.text != widget.row.micValue) {
+      _micValueCtrl.text = widget.row.micValue;
+    }
+    if (_zoneCtrl.text != widget.row.zoneDiameter) {
+      _zoneCtrl.text = widget.row.zoneDiameter;
+    }
+    if (_antibioticCtrl.text != widget.row.antibiotic) {
+      _antibioticCtrl.text = widget.row.antibiotic;
+    }
   }
 
   @override
@@ -552,38 +626,45 @@ class _AstRowState extends State<_AstRow> {
                 child: Autocomplete<String>(
                   initialValue: TextEditingValue(text: row.antibiotic),
                   optionsBuilder: (textEditingValue) {
-                    if (textEditingValue.text.isEmpty) return ClinicalCatalog.antibiotics;
-                    return ClinicalCatalog.antibiotics.where((a) =>
-                        a.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                    if (textEditingValue.text.isEmpty) {
+                      return ClinicalCatalog.antibiotics;
+                    }
+                    return ClinicalCatalog.antibiotics.where(
+                      (a) => a.toLowerCase().contains(
+                        textEditingValue.text.toLowerCase(),
+                      ),
+                    );
                   },
-                  onSelected: (value) => widget.notifier
-                      .updateDrugAt(widget.index, row.copyWith(antibiotic: value)),
+                  onSelected: (value) => widget.notifier.updateDrugAt(
+                    widget.index,
+                    row.copyWith(antibiotic: value),
+                  ),
                   fieldViewBuilder: (context, ctrl, focusNode, onSubmit) {
                     return TextField(
                       controller: ctrl,
                       focusNode: focusNode,
                       decoration: _fieldDecoration(hint: 'Antibiotic'),
-                      onChanged: (v) => widget.notifier
-                          .updateDrugAt(widget.index, row.copyWith(antibiotic: v)),
+                      onChanged: (v) => widget.notifier.updateDrugAt(
+                        widget.index,
+                        row.copyWith(antibiotic: v),
+                      ),
                     );
                   },
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
+              SizedBox(
+                width: 320,
                 child: IgnorePointer(
                   child: TextField(
                     enabled: false,
-                    decoration: _fieldDecoration(hint: 'Class (auto)').copyWith(
-                      hintText: row.antibioticClass ?? 'Class (auto)',
-                    ),
+                    decoration: _fieldDecoration(
+                      hint: 'Class (auto)',
+                    ).copyWith(hintText: row.antibioticClass ?? 'Class (auto)'),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
+              SizedBox(
+                width: 320,
                 child: DropdownButtonFormField<String>(
                   initialValue: row.astResult.isEmpty ? null : row.astResult,
                   decoration: _fieldDecoration(hint: 'Result'),
@@ -591,14 +672,20 @@ class _AstRowState extends State<_AstRow> {
                     for (final v in ClinicalCatalog.astResults)
                       DropdownMenuItem(value: v, child: Text(v)),
                   ],
-                  onChanged: (v) => widget.notifier
-                      .updateDrugAt(widget.index, row.copyWith(astResult: v ?? '')),
+                  onChanged: (v) => widget.notifier.updateDrugAt(
+                    widget.index,
+                    row.copyWith(astResult: v ?? ''),
+                  ),
                 ),
               ),
               IconButton(
                 tooltip: 'Remove',
                 onPressed: () => widget.notifier.removeDrugAt(widget.index),
-                icon: const Icon(Icons.close, size: 18, color: AppColors.textMuted),
+                icon: const Icon(
+                  Icons.close,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
               ),
             ],
           ),
@@ -607,38 +694,51 @@ class _AstRowState extends State<_AstRow> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: row.micOperator.isEmpty ? null : row.micOperator,
+                  initialValue: row.micOperator.isEmpty
+                      ? null
+                      : row.micOperator,
                   decoration: _fieldDecoration(hint: 'MIC operator'),
                   items: [
                     for (final v in ClinicalCatalog.micOperators)
                       DropdownMenuItem(value: v, child: Text(v)),
                   ],
-                  onChanged: (v) => widget.notifier
-                      .updateDrugAt(widget.index, row.copyWith(micOperator: v ?? '')),
+                  onChanged: (v) => widget.notifier.updateDrugAt(
+                    widget.index,
+                    row.copyWith(micOperator: v ?? ''),
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
+              SizedBox(
+                width: 320,
+
                 child: TextField(
                   controller: _micValueCtrl,
                   decoration: _fieldDecoration(hint: 'MIC value'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (v) =>
-                      widget.notifier.updateDrugAt(widget.index, row.copyWith(micValue: v)),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  onChanged: (v) => widget.notifier.updateDrugAt(
+                    widget.index,
+                    row.copyWith(micValue: v),
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
+              SizedBox(
+                width: 320,
+
                 child: TextField(
                   controller: _zoneCtrl,
                   decoration: _fieldDecoration(hint: 'Zone (mm)'),
                   keyboardType: TextInputType.number,
-                  onChanged: (v) =>
-                      widget.notifier.updateDrugAt(widget.index, row.copyWith(zoneDiameter: v)),
+                  onChanged: (v) => widget.notifier.updateDrugAt(
+                    widget.index,
+                    row.copyWith(zoneDiameter: v),
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
+              SizedBox(
+                width: 320,
+
                 child: DropdownButtonFormField<String>(
                   initialValue: row.method.isEmpty ? null : row.method,
                   decoration: _fieldDecoration(hint: 'Method'),
@@ -646,8 +746,10 @@ class _AstRowState extends State<_AstRow> {
                     for (final v in ClinicalCatalog.astMethods)
                       DropdownMenuItem(value: v, child: Text(v)),
                   ],
-                  onChanged: (v) =>
-                      widget.notifier.updateDrugAt(widget.index, row.copyWith(method: v ?? '')),
+                  onChanged: (v) => widget.notifier.updateDrugAt(
+                    widget.index,
+                    row.copyWith(method: v ?? ''),
+                  ),
                 ),
               ),
             ],
@@ -681,12 +783,21 @@ class _SuccessView extends StatelessWidget {
                   borderRadius: BorderRadius.circular(28),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(Icons.check, color: AppColors.accentGreen, size: 28),
+                child: const Icon(
+                  Icons.check,
+                  color: AppColors.accentGreen,
+                  size: 28,
+                ),
               ),
               const SizedBox(height: 18),
-              const Text('Result Recorded',
-                  style: TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const Text(
+                'Result Recorded',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
               const SizedBox(height: 10),
               MutedText(summary, textAlign: TextAlign.center),
               const SizedBox(height: 24),

@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -136,9 +137,39 @@ def parse_ocr_document(
         if extracted.strip():
             raw_text = extracted
             ocr_engine = "Google Cloud Vision / Lens Multimodal OCR"
-
-    if not raw_text.strip():
-        # Fallback to demo template if raw text is empty
+        else:
+            # Check if API key was missing
+            api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+            if not api_key:
+                return {
+                    "raw_text": "",
+                    "ocr_engine": "OCR Engine (Unconfigured)",
+                    "extracted": {
+                        "full_name": None,
+                        "exact_age": None,
+                        "age_group": None,
+                        "sex": "Other",
+                        "district": "Pune",
+                        "complaints": None,
+                        "diagnosis": None,
+                        "diagnosis_status": "Suspected",
+                        "infection_syndrome": None,
+                        "infection_origin": "Community-acquired",
+                        "patient_outcome": "Under review",
+                        "symptoms": [],
+                    },
+                    "intelligence_audit": {
+                        "plausibility_score": 0,
+                        "status": "Configuration Required",
+                        "is_valid": False,
+                        "summary": "Google Gemini Vision API key is not configured on the server (set GEMINI_API_KEY in backend/.env).",
+                        "findings": ["CONFIG_REQUIRED: Set GEMINI_API_KEY in backend/.env to enable multimodal handwriting & document recognition."],
+                        "mdr_flag": False,
+                    },
+                }
+            raw_text = "NON_MEDICAL_DOCUMENT"
+    elif not raw_text.strip():
+        # Fallback to demo template ONLY if user requested empty raw text without an image
         if request.document_type == "clinical_report":
             raw_text = SAMPLE_DOCUMENTS["doctor_pneumonia_prescription"]["text"]
         else:

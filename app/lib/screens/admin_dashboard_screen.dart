@@ -462,11 +462,11 @@ class _AdminDashboardContent extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              columnSpacing: 24,
+              columnSpacing: 36,
               horizontalMargin: 0,
               headingRowHeight: 36,
-              dataRowMinHeight: 44,
-              dataRowMaxHeight: 44,
+              dataRowMinHeight: 64,
+              dataRowMaxHeight: 64,
               columns: const [
                 DataColumn(label: Text('Pathogen', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
                 DataColumn(label: Text('Antibiotic', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
@@ -581,11 +581,11 @@ class _AdminDashboardContent extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              columnSpacing: 20,
+              columnSpacing: 36,
               horizontalMargin: 0,
               headingRowHeight: 36,
-              dataRowMinHeight: 44,
-              dataRowMaxHeight: 44,
+              dataRowMinHeight: 64,
+              dataRowMaxHeight: 64,
               columns: const [
                 DataColumn(label: Text('Alert ID', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
                 DataColumn(label: Text('Type', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),

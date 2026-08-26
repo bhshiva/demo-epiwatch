@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:file_selector/file_selector.dart';
+import 'dart:convert';
 import '../models/ingestion_models.dart';
 import '../services/api_client.dart';
 import '../theme/app_colors.dart';
@@ -35,16 +37,6 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
       'title': 'Clinical Anomaly: Meningitis with only Gastro symptoms',
       'document_type': 'clinical_report',
       'text': 'Patient: Anita Sharma, Age: 31, Sex: Female, District: Pune\nComplaints: Diarrhea and abdominal pain\nDiagnosis: Bacterial Meningitis\nSyndrome: Central Nervous System infection',
-    },
-    'lab_ast_klebsiella_intrinsic_violation': {
-      'title': 'Lab AST: Klebsiella with Intrinsic Ampicillin Susceptibility Violation',
-      'document_type': 'lab_isolate',
-      'text': 'Lab No: ACC-2026-9041\nSpecimen: Urine\nPathogen: Klebsiella pneumoniae\nCulture: Growth - organism identified\nAST Results:\n- Ampicillin: Susceptible (Zone: 18mm)\n- Ceftriaxone: Resistant\n- Meropenem: Susceptible',
-    },
-    'lab_ast_pseudomonas_mdr': {
-      'title': 'Lab AST: Pseudomonas aeruginosa (Multi-Drug Resistant / MDR)',
-      'document_type': 'lab_isolate',
-      'text': 'Lab No: ACC-2026-9042\nSpecimen: Wound swab\nPathogen: Pseudomonas aeruginosa\nCulture: Growth - organism identified\nAST Results:\n- Ceftazidime: Resistant\n- Ciprofloxacin: Resistant\n- Gentamicin: Resistant\n- Imipenem: Resistant\n- Colistin: Susceptible',
     },
   };
 
@@ -110,6 +102,42 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('OCR extraction error: $e'),
+            backgroundColor: AppColors.statusCritical,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickAndProcessImage() async {
+    try {
+      const typeGroup = XTypeGroup(
+        label: 'Medical Documents & Scans',
+        extensions: <String>['jpg', 'jpeg', 'png', 'pdf'],
+      );
+
+      final XFile? file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
+
+      if (file == null) return;
+
+      setState(() {
+        _isProcessing = true;
+      });
+
+      final bytes = await file.readAsBytes();
+      final base64String = base64Encode(bytes);
+      await _processOcr(null, base64String);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to read file: $e'),
             backgroundColor: AppColors.statusCritical,
           ),
         );
@@ -323,7 +351,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
   }
 
   Widget _buildTemplatesTab(bool isDoctor) {
-    if (_sampleDocs == null) {
+    if (_sampleDocs.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),
@@ -332,7 +360,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
       );
     }
 
-    final filteredSamples = _sampleDocs!.entries
+    final filteredSamples = _sampleDocs.entries
         .where((e) => (e.value as Map<String, dynamic>)['document_type'] == widget.documentType)
         .toList();
 
@@ -489,19 +517,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                 ),
                 icon: const Icon(Icons.upload_file, size: 18),
                 label: const Text('Select Medical Image / PDF'),
-                onPressed: _isProcessing
-                    ? null
-                    : () {
-                        // Triggers standard prescription template with Google OCR simulation
-                        final sampleKey = isDoctor
-                            ? 'doctor_pneumonia_prescription'
-                            : 'lab_ast_klebsiella_intrinsic_violation';
-                        final text = _sampleDocs?[sampleKey]?['text'] as String?;
-                        if (text != null) {
-                          _textController.text = text;
-                          _processOcr(text);
-                        }
-                      },
+                onPressed: _isProcessing ? null : _pickAndProcessImage,
               ),
             ],
           ),

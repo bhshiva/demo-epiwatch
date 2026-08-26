@@ -605,11 +605,11 @@ class _AdminApplicationsScreenState extends ConsumerState<AdminApplicationsScree
                       child: ConstrainedBox(
                         constraints: BoxConstraints(minWidth: constraints.maxWidth),
                         child: DataTable(
-                          columnSpacing: 28,
+                          columnSpacing: 36,
                           horizontalMargin: 12,
                           headingRowHeight: 44,
-                          dataRowMinHeight: 52,
-                          dataRowMaxHeight: 52,
+                          dataRowMinHeight: 64,
+                          dataRowMaxHeight: 64,
                           headingRowColor: WidgetStateProperty.all(const Color(0xFFF9FAFB)),
                           columns: const [
                             DataColumn(label: Text('FULL NAME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF6B7280)))),

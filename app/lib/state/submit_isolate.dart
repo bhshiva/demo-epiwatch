@@ -333,6 +333,14 @@ class SubmitIsolateNotifier extends Notifier<SubmitIsolateState> {
   // --- OCR Ingestion & Intelligence Validation ---
 
   void applyOcrResult(OcrParseResult ocr) {
+    if (!ocr.intelligenceAudit.isValid && ocr.intelligenceAudit.plausibilityScore == 0) {
+      state = state.copyWith(
+        intelligenceAudit: ocr.intelligenceAudit,
+        error: null,
+      );
+      return;
+    }
+
     final ext = ocr.extracted;
     final rawPanel = (ext['ast_panel'] as List<dynamic>?) ?? [];
 

@@ -132,7 +132,7 @@ class _WorklistBody extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        columnSpacing: 28,
+        columnSpacing: 36,
         headingTextStyle: const TextStyle(
             fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
         columns: const [

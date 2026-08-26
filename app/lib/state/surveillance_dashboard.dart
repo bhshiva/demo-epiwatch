@@ -70,27 +70,34 @@ class SurveillanceDashboardNotifier extends Notifier<SurveillanceDashboardState>
   Future<void> load() async {
     state = state.copyWith(isBusy: true, error: null);
     final api = ref.read(apiClientProvider);
+
     try {
-      final diseaseDaily = await api.getDiseaseDaily();
-      final resistanceRates = await api.getSurveillanceMetrics('resistance_rate');
-      final facilities = await api.getFacilitiesGeo();
-      final districts = await api.getDistrictSummaries();
-      final summary = await api.getSurveillanceSummary();
-      final riskScores = await api.getRiskScores();
-      final alerts = await api.getAlerts();
+      final results = await Future.wait([
+        api.getDiseaseDaily().catchError((_) => <DiseaseDailyPoint>[]),
+        api.getSurveillanceMetrics('resistance_rate').catchError((_) => <SurveillanceMetric>[]),
+        api.getFacilitiesGeo().catchError((_) => <FacilityGeo>[]),
+        api.getDistrictSummaries().catchError((_) => <DistrictSummary>[]),
+        api.getSurveillanceSummary().catchError((_) => const SurveillanceSummary(facilitiesReporting: 0, reportsToday: 0)),
+        api.getRiskScores().catchError((_) => <RiskScore>[]),
+        api.getAlerts().catchError((_) => <Alert>[]),
+      ]);
+
       state = SurveillanceDashboardState(
-        diseaseDaily: diseaseDaily,
-        resistanceRates: resistanceRates,
-        facilities: facilities,
-        districts: districts,
-        riskScores: riskScores,
-        alerts: alerts,
-        summary: summary,
+        diseaseDaily: results[0] as List<DiseaseDailyPoint>,
+        resistanceRates: results[1] as List<SurveillanceMetric>,
+        facilities: results[2] as List<FacilityGeo>,
+        districts: results[3] as List<DistrictSummary>,
+        summary: results[4] as SurveillanceSummary,
+        riskScores: results[5] as List<RiskScore>,
+        alerts: results[6] as List<Alert>,
+        isBusy: false,
       );
     } on ApiException catch (e) {
       state = state.copyWith(isBusy: false, error: e.message);
     } on NetworkException catch (e) {
       state = state.copyWith(isBusy: false, error: e.message);
+    } catch (e) {
+      state = state.copyWith(isBusy: false, error: e.toString());
     }
   }
 }

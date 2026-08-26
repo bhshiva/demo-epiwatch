@@ -67,15 +67,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               _KpiRow(summary: state.summary, alertCount: DemoData.outbreakAlerts.length),
               const SizedBox(height: 18),
               if (isWide)
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: const [
-                      Expanded(child: _TrendCard()),
-                      SizedBox(width: 18),
-                      SizedBox(width: 380, child: _RightRail()),
-                    ],
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Expanded(child: _TrendCard()),
+                    SizedBox(width: 18),
+                    SizedBox(width: 380, child: _RightRail()),
+                  ],
                 )
               else
                 const Column(
@@ -297,7 +295,9 @@ class _PatientQueueState extends State<_PatientQueue> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            columnSpacing: 28,
+            columnSpacing: 36,
+            dataRowMinHeight: 64,
+            dataRowMaxHeight: 64,
             headingTextStyle: const TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
             columns: const [
@@ -348,10 +348,11 @@ class _KpiRow extends StatelessWidget {
               width: (constraints.maxWidth - 18 * (perRow - 1)) / perRow,
               child: SectionCard(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(t.$1,
                         style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: t.$3)),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     MutedText(t.$2),
                   ],
                 ),
@@ -474,6 +475,22 @@ class _TrendCard extends StatelessWidget {
                       curveSmoothness: 0.3,
                       color: colors[i % colors.length],
                       barWidth: 2.5,
+                      shadow: Shadow(
+                        color: colors[i % colors.length].withValues(alpha: 0.4),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [
+                            colors[i % colors.length].withValues(alpha: 0.25),
+                            colors[i % colors.length].withValues(alpha: 0.0),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
                       dotData: FlDotData(
                         getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
                           radius: 3.5,
@@ -695,7 +712,9 @@ class _RecentReportsState extends State<_RecentReports> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              columnSpacing: 28,
+              columnSpacing: 36,
+              dataRowMinHeight: 64,
+              dataRowMaxHeight: 64,
               headingTextStyle: const TextStyle(
                   fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
               columns: const [

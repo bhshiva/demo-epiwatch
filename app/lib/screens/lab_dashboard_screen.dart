@@ -277,13 +277,23 @@ class _PathogenChart extends StatelessWidget {
                           BarChartGroupData(x: i, barRods: [
                             BarChartRodData(
                               toY: data[i].count.toDouble(),
-                              color: AppColors.chartBlue,
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.chartBlue.withValues(alpha: 0.6),
+                                  AppColors.chartBlue,
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
                               width: 22,
-                              // 4px rounded data-end at the cap, square at
-                              // the baseline -- never round a bar's foot.
                               borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(4),
-                                topRight: Radius.circular(4),
+                                topLeft: Radius.circular(6),
+                                topRight: Radius.circular(6),
+                              ),
+                              backDrawRodData: BackgroundBarChartRodData(
+                                show: true,
+                                toY: data.isEmpty ? 10 : data.map((d) => d.count).reduce((a, b) => a > b ? a : b) * 1.18,
+                                color: AppColors.border.withValues(alpha: 0.4),
                               ),
                             ),
                           ]),

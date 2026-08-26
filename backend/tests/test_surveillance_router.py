@@ -106,3 +106,20 @@ def test_districts_includes_the_seeded_facilitys_district():
     assert any(d["district"] == "Pune" for d in body)
     for row in body:
         assert row["facility_count"] >= 1
+
+
+def test_risk_scores_and_alerts_endpoints():
+    risk_resp = client.get("/surveillance/risk-scores", headers=_ha_headers())
+    assert risk_resp.status_code == 200
+    risk_data = risk_resp.json()
+    assert isinstance(risk_data, list)
+    assert len(risk_data) > 0
+    assert "composite_risk_score" in risk_data[0]
+
+    alerts_resp = client.get("/surveillance/alerts", headers=_ha_headers())
+    assert alerts_resp.status_code == 200
+    alerts_data = alerts_resp.json()
+    assert isinstance(alerts_data, list)
+    assert len(alerts_data) > 0
+    assert "alert_level" in alerts_data[0]
+

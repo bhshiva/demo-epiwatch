@@ -46,12 +46,18 @@ class _SubmitReportScreenState extends ConsumerState<SubmitReportScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Submit Clinical Report',
-                      style: TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const Text(
+                    'Submit Clinical Report',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 7),
                   const MutedText(
-                      'Reports are de-identified before aggregation. Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies so data is comparable across facilities.'),
+                    'Reports are de-identified before aggregation. Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies so data is comparable across facilities.',
+                  ),
                   const SizedBox(height: 20),
                   OcrIngestionCard(
                     documentType: 'clinical_report',
@@ -93,9 +99,12 @@ class _FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+    ),
+  );
 }
 
 class _SegmentGroup extends StatelessWidget {
@@ -103,7 +112,11 @@ class _SegmentGroup extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onSelect;
 
-  const _SegmentGroup({required this.options, required this.selected, required this.onSelect});
+  const _SegmentGroup({
+    required this.options,
+    required this.selected,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +140,11 @@ class _SegmentChip extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _SegmentChip({required this.label, required this.isSelected, required this.onTap});
+  const _SegmentChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -141,13 +158,17 @@ class _SegmentChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: isSelected ? AppColors.accentTeal : AppColors.border),
+            border: Border.all(
+              color: isSelected ? AppColors.accentTeal : AppColors.border,
+            ),
           ),
           child: Text(
             label,
             style: TextStyle(
               fontSize: 13,
-              color: isSelected ? AppColors.accentGreen : AppColors.textSecondary,
+              color: isSelected
+                  ? AppColors.accentGreen
+                  : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
@@ -162,7 +183,11 @@ class _OtherField extends ConsumerWidget {
   final String value;
   final ValueChanged<String> onChanged;
 
-  const _OtherField({required this.visible, required this.value, required this.onChanged});
+  const _OtherField({
+    required this.visible,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -240,13 +265,17 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
           const Padding(
             padding: EdgeInsets.only(top: 4, bottom: 14),
             child: MutedText(
-                'Search an existing patient to continue their record, or register a new one. Names are stored separately from surveillance data and never leave this facility.'),
+              'Search an existing patient to continue their record, or register a new one. Names are stored separately from surveillance data and never leave this facility.',
+            ),
           ),
           if (!state.hasSelectedPatient && !state.isNewPatient) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Wrap(
+              spacing: 24,
+              runSpacing: 20,
               children: [
-                Expanded(
+                SizedBox(
+                  width: 320,
+
                   child: TextField(
                     controller: _searchController,
                     decoration: const InputDecoration(isDense: true),
@@ -259,14 +288,19 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                   onPressed: () => notifier.searchPatients(),
                   child: state.isSearching
                       ? const SizedBox(
-                          width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Text('Search'),
                 ),
               ],
             ),
             const Padding(
               padding: EdgeInsets.only(top: 5),
-              child: MutedText('Search by name, ABHA number, phone number or facility MRN'),
+              child: MutedText(
+                'Search by name, ABHA number, phone number or facility MRN',
+              ),
             ),
             if (state.searchMessage != null)
               Padding(
@@ -311,17 +345,30 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(state.selectedPatient!.fullName,
-                            style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.accentGreen)),
+                        Text(
+                          state.selectedPatient!.fullName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.accentGreen,
+                          ),
+                        ),
                         const SizedBox(height: 3),
-                        Text(state.selectedPatient!.summary,
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(
+                          state.selectedPatient!.summary,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text(state.selectedPatient!.visitSummary,
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(
+                          state.selectedPatient!.visitSummary,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -348,26 +395,38 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 9),
                         decoration: const BoxDecoration(
-                          border: Border(bottom: BorderSide(color: AppColors.border)),
+                          border: Border(
+                            bottom: BorderSide(color: AppColors.border),
+                          ),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Wrap(
+                          spacing: 24,
+                          runSpacing: 20,
                           children: [
-                            Expanded(
+                            SizedBox(
+                              width: 320,
+
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
-                                      Text(entry.reportDate,
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textSecondary)),
+                                      Text(
+                                        entry.reportDate,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
                                       const SizedBox(width: 12),
-                                      Text(entry.diagnosis ?? '',
-                                          style: const TextStyle(
-                                              fontSize: 13, color: AppColors.textPrimary)),
+                                      Text(
+                                        entry.diagnosis ?? '',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -387,7 +446,10 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
             Row(
               children: [
                 const Expanded(child: _FieldLabel('New Patient')),
-                TextButton(onPressed: notifier.clearPatient, child: const Text('Search instead')),
+                TextButton(
+                  onPressed: notifier.clearPatient,
+                  child: const Text('Search instead'),
+                ),
               ],
             ),
             TextField(
@@ -400,10 +462,13 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
               child: MutedText('Full name *'),
             ),
             const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Wrap(
+              spacing: 24,
+              runSpacing: 20,
               children: [
-                Expanded(
+                SizedBox(
+                  width: 320,
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -416,8 +481,9 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 20),
-                Expanded(
+                SizedBox(
+                  width: 320,
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -429,7 +495,9 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                         decoration: InputDecoration(
                           isDense: true,
                           counterText: '',
-                          errorText: !state.isContactValid ? 'Invalid contact number (must be 10 digits)' : null,
+                          errorText: !state.isContactValid
+                              ? 'Invalid contact number (must be 10 digits)'
+                              : null,
                         ),
                         onChanged: notifier.setNewPatientContact,
                       ),
@@ -439,10 +507,13 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
               ],
             ),
             const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Wrap(
+              spacing: 24,
+              runSpacing: 20,
               children: [
-                Expanded(
+                SizedBox(
+                  width: 320,
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -457,9 +528,11 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                           );
                           if (picked != null) notifier.setNewPatientDob(picked);
                         },
-                        child: Text(state.newPatientDob == null
-                            ? 'Select date'
-                            : '${state.newPatientDob!.year}-${state.newPatientDob!.month.toString().padLeft(2, '0')}-${state.newPatientDob!.day.toString().padLeft(2, '0')}'),
+                        child: Text(
+                          state.newPatientDob == null
+                              ? 'Select date'
+                              : '${state.newPatientDob!.year}-${state.newPatientDob!.month.toString().padLeft(2, '0')}-${state.newPatientDob!.day.toString().padLeft(2, '0')}',
+                        ),
                       ),
                       const Padding(
                         padding: EdgeInsets.only(top: 5),
@@ -468,8 +541,9 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 20),
-                Expanded(
+                SizedBox(
+                  width: 320,
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -480,7 +554,10 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                             child: TextField(
                               controller: _abhaController,
                               maxLength: 20,
-                              decoration: const InputDecoration(isDense: true, counterText: ''),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                counterText: '',
+                              ),
                               onChanged: notifier.setNewPatientAbha,
                             ),
                           ),
@@ -491,14 +568,19 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                                 ? const SizedBox(
                                     width: 14,
                                     height: 14,
-                                    child: CircularProgressIndicator(strokeWidth: 2))
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
                                 : const Text('Verify'),
                           ),
                         ],
                       ),
                       const Padding(
                         padding: EdgeInsets.only(top: 5),
-                        child: MutedText('14-digit ABDM health ID, if the patient has one'),
+                        child: MutedText(
+                          '14-digit ABDM health ID, if the patient has one',
+                        ),
                       ),
                     ],
                   ),
@@ -512,11 +594,15 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                 onPressed: () => notifier.checkForDuplicates(),
                 child: state.isCheckingDuplicates
                     ? const SizedBox(
-                        width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Check for existing records'),
               ),
             ),
-            if (state.hasNearMatches) _NearMatchesCard(state: state, notifier: notifier),
+            if (state.hasNearMatches)
+              _NearMatchesCard(state: state, notifier: notifier),
           ],
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
@@ -524,10 +610,13 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
           ),
           const SectionTitle('Patient Context'),
           const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Wrap(
+            spacing: 24,
+            runSpacing: 20,
             children: [
-              Expanded(
+              SizedBox(
+                width: 320,
+
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -539,7 +628,9 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                       decoration: InputDecoration(
                         isDense: true,
                         counterText: '',
-                        errorText: !state.isAgeValid ? 'Invalid age (0–120 years)' : null,
+                        errorText: !state.isAgeValid
+                            ? 'Invalid age (0–120 years)'
+                            : null,
                       ),
                       onChanged: notifier.setPatientAge,
                     ),
@@ -547,12 +638,18 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                       padding: const EdgeInsets.only(top: 5),
                       child: Text.rich(
                         TextSpan(
-                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
                           children: [
                             const TextSpan(text: 'GLASS band: '),
                             TextSpan(
-                                text: state.derivedAgeGroup,
-                                style: const TextStyle(fontWeight: FontWeight.w600)),
+                              text: state.derivedAgeGroup,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -560,8 +657,9 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                   ],
                 ),
               ),
-              const SizedBox(width: 20),
-              Expanded(
+              SizedBox(
+                width: 320,
+
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -572,28 +670,35 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                         if (textEditingValue.text.isEmpty) {
                           return ClinicalCatalog.districts;
                         }
-                        return ClinicalCatalog.districts.where((d) => d
-                            .toLowerCase()
-                            .contains(textEditingValue.text.toLowerCase()));
-                      },
-                      initialValue: TextEditingValue(text: state.patientDistrict),
-                      onSelected: notifier.setPatientDistrict,
-                      fieldViewBuilder: (context, controller, focusNode, onSubmit) {
-                        if (controller.text != state.patientDistrict &&
-                            !focusNode.hasFocus) {
-                          controller.text = state.patientDistrict;
-                        }
-                        return TextField(
-                          controller: controller,
-                          focusNode: focusNode,
-                          decoration: const InputDecoration(isDense: true),
-                          onChanged: notifier.setPatientDistrict,
+                        return ClinicalCatalog.districts.where(
+                          (d) => d.toLowerCase().contains(
+                            textEditingValue.text.toLowerCase(),
+                          ),
                         );
                       },
+                      initialValue: TextEditingValue(
+                        text: state.patientDistrict,
+                      ),
+                      onSelected: notifier.setPatientDistrict,
+                      fieldViewBuilder:
+                          (context, controller, focusNode, onSubmit) {
+                            if (controller.text != state.patientDistrict &&
+                                !focusNode.hasFocus) {
+                              controller.text = state.patientDistrict;
+                            }
+                            return TextField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              decoration: const InputDecoration(isDense: true),
+                              onChanged: notifier.setPatientDistrict,
+                            );
+                          },
                     ),
                     const Padding(
                       padding: EdgeInsets.only(top: 5),
-                      child: MutedText('Type to search, or enter another district'),
+                      child: MutedText(
+                        'Type to search, or enter another district',
+                      ),
                     ),
                   ],
                 ),
@@ -652,11 +757,14 @@ class _PatientOptionTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(patient.fullName,
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary)),
+                      Text(
+                        patient.fullName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
                       const SizedBox(height: 3),
                       MutedText(patient.summary),
                     ],
@@ -694,7 +802,9 @@ class _AbhaResultCard extends StatelessWidget {
 
     final statusLabel = result.verified
         ? 'Verified with ABDM registry'
-        : (result.isValid ? 'Format valid, not verified' : 'Invalid ABHA number');
+        : (result.isValid
+              ? 'Format valid, not verified'
+              : 'Invalid ABHA number');
 
     return Container(
       margin: const EdgeInsets.only(top: 12),
@@ -707,37 +817,58 @@ class _AbhaResultCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(statusLabel,
-              style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          Text(
+            statusLabel,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
           if (result.verified) ...[
             const SizedBox(height: 8),
             if (result.name != null)
-              Text.rich(TextSpan(
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                children: [
-                  const TextSpan(text: 'Registry name: '),
-                  TextSpan(
-                      text: result.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                ],
-              )),
+              Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                  children: [
+                    const TextSpan(text: 'Registry name: '),
+                    TextSpan(
+                      text: result.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 2),
-            Text.rich(TextSpan(
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              children: [
-                const TextSpan(text: 'Date of birth: '),
-                TextSpan(
+            Text.rich(
+              TextSpan(
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+                children: [
+                  const TextSpan(text: 'Date of birth: '),
+                  TextSpan(
                     text: result.dateOfBirth ?? '—',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                const TextSpan(text: '   Gender: '),
-                TextSpan(
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const TextSpan(text: '   Gender: '),
+                  TextSpan(
                     text: result.gender ?? '—',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-              ],
-            )),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
             const Padding(
               padding: EdgeInsets.only(top: 6),
-              child: MutedText('Details above have been filled in from the national registry.'),
+              child: MutedText(
+                'Details above have been filled in from the national registry.',
+              ),
             ),
           ],
         ],
@@ -765,12 +896,19 @@ class _NearMatchesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('This patient may already exist',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF92400E))),
+          const Text(
+            'This patient may already exist',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF92400E),
+            ),
+          ),
           const SizedBox(height: 4),
           const Text(
-              'Choosing an existing record keeps their history together. Creating a new one splits it.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF92400E))),
+            'Choosing an existing record keeps their history together. Creating a new one splits it.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF92400E)),
+          ),
           const SizedBox(height: 12),
           for (final candidate in state.nearMatches)
             Container(
@@ -781,18 +919,24 @@ class _NearMatchesCard extends StatelessWidget {
                 border: Border.all(color: AppColors.border),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Wrap(
+                spacing: 24,
+                runSpacing: 20,
                 children: [
-                  Expanded(
+                  SizedBox(
+                    width: 320,
+
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(candidate.fullName,
-                            style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary)),
+                        Text(
+                          candidate.fullName,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
                         const SizedBox(height: 3),
                         MutedText(candidate.summary),
                         const SizedBox(height: 2),
@@ -801,19 +945,26 @@ class _NearMatchesCard extends StatelessWidget {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFEF3C7),
                                 borderRadius: BorderRadius.circular(3),
                               ),
-                              child: Text(candidate.confidence.toUpperCase(),
-                                  style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF92400E))),
+                              child: Text(
+                                candidate.confidence.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF92400E),
+                                ),
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
+                            SizedBox(
+                              width: 320,
+
                               child: MutedText(candidate.matchedOn.join(', ')),
                             ),
                           ],
@@ -830,7 +981,9 @@ class _NearMatchesCard extends StatelessWidget {
             ),
           OutlinedButton(
             onPressed: notifier.createAnyway,
-            child: const Text('No — this is a different person, create a new record'),
+            child: const Text(
+              'No — this is a different person, create a new record',
+            ),
           ),
         ],
       ),
@@ -844,10 +997,12 @@ class _ClinicalSummarySection extends ConsumerStatefulWidget {
   const _ClinicalSummarySection();
 
   @override
-  ConsumerState<_ClinicalSummarySection> createState() => _ClinicalSummarySectionState();
+  ConsumerState<_ClinicalSummarySection> createState() =>
+      _ClinicalSummarySectionState();
 }
 
-class _ClinicalSummarySectionState extends ConsumerState<_ClinicalSummarySection> {
+class _ClinicalSummarySectionState
+    extends ConsumerState<_ClinicalSummarySection> {
   final _complaintsController = TextEditingController();
   final _historyController = TextEditingController();
   final _newSymptomController = TextEditingController();
@@ -886,8 +1041,9 @@ class _ClinicalSummarySectionState extends ConsumerState<_ClinicalSummarySection
               for (final symptom in ClinicalCatalog.commonSymptoms)
                 _SymptomChip(
                   label: symptom,
-                  isSelected: state.symptoms
-                      .any((s) => s.toLowerCase() == symptom.toLowerCase()),
+                  isSelected: state.symptoms.any(
+                    (s) => s.toLowerCase() == symptom.toLowerCase(),
+                  ),
                   onTap: () => notifier.toggleSymptom(symptom),
                 ),
             ],
@@ -922,7 +1078,10 @@ class _ClinicalSummarySectionState extends ConsumerState<_ClinicalSummarySection
               children: [
                 for (final symptom in state.symptoms)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFDCEFE4),
                       border: Border.all(color: AppColors.accentMint),
@@ -931,13 +1090,21 @@ class _ClinicalSummarySectionState extends ConsumerState<_ClinicalSummarySection
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(symptom,
-                            style:
-                                const TextStyle(fontSize: 12, color: AppColors.accentGreen)),
+                        Text(
+                          symptom,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.accentGreen,
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         InkWell(
                           onTap: () => notifier.removeSymptom(symptom),
-                          child: const Icon(Icons.close, size: 12, color: AppColors.accentGreen),
+                          child: const Icon(
+                            Icons.close,
+                            size: 12,
+                            color: AppColors.accentGreen,
+                          ),
                         ),
                       ],
                     ),
@@ -965,7 +1132,11 @@ class _SymptomChip extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _SymptomChip({required this.label, required this.isSelected, required this.onTap});
+  const _SymptomChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -979,13 +1150,17 @@ class _SymptomChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: isSelected ? AppColors.accentMint : AppColors.border),
+            border: Border.all(
+              color: isSelected ? AppColors.accentMint : AppColors.border,
+            ),
           ),
           child: Text(
             label,
             style: TextStyle(
               fontSize: 12,
-              color: isSelected ? AppColors.accentGreen : AppColors.textSecondary,
+              color: isSelected
+                  ? AppColors.accentGreen
+                  : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
@@ -1087,7 +1262,8 @@ class _AcornSectionState extends ConsumerState<_AcornSection> {
           const Padding(
             padding: EdgeInsets.only(top: 4, bottom: 16),
             child: MutedText(
-                'Follows ACORN, the clinically-oriented AMR surveillance protocol. These fields let signals be analysed by presentation and acquisition setting, not just diagnosis text.'),
+              'Follows ACORN, the clinically-oriented AMR surveillance protocol. These fields let signals be analysed by presentation and acquisition setting, not just diagnosis text.',
+            ),
           ),
           const _FieldLabel('Infection Syndrome'),
           _Dropdown(
@@ -1122,7 +1298,8 @@ class _AcornSectionState extends ConsumerState<_AcornSection> {
           const Padding(
             padding: EdgeInsets.only(top: 5),
             child: MutedText(
-                'Leave as "Not yet known" at the point of care; ACORN records outcome at discharge and day 28.'),
+              'Leave as "Not yet known" at the point of care; ACORN records outcome at discharge and day 28.',
+            ),
           ),
         ],
       ),
@@ -1135,7 +1312,11 @@ class _Dropdown extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
 
-  const _Dropdown({required this.options, required this.value, required this.onChanged});
+  const _Dropdown({
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1145,7 +1326,8 @@ class _Dropdown extends StatelessWidget {
       isExpanded: true,
       decoration: const InputDecoration(isDense: true),
       items: [
-        for (final option in items) DropdownMenuItem(value: option, child: Text(option)),
+        for (final option in items)
+          DropdownMenuItem(value: option, child: Text(option)),
       ],
       onChanged: (v) {
         if (v != null) onChanged(v);
@@ -1198,7 +1380,8 @@ class _LabSectionState extends ConsumerState<_LabSection> {
                     Padding(
                       padding: EdgeInsets.only(top: 4),
                       child: MutedText(
-                          'Culture and susceptibility data feeds antimicrobial resistance surveillance.'),
+                        'Culture and susceptibility data feeds antimicrobial resistance surveillance.',
+                      ),
                     ),
                   ],
                 ),
@@ -1206,8 +1389,13 @@ class _LabSectionState extends ConsumerState<_LabSection> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Lab performed',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  const Text(
+                    'Lab performed',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   Checkbox(
                     value: state.labPerformed,
                     onChanged: (v) => notifier.setLabPerformed(v ?? false),
@@ -1218,10 +1406,13 @@ class _LabSectionState extends ConsumerState<_LabSection> {
           ),
           if (state.labPerformed) ...[
             const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Wrap(
+              spacing: 24,
+              runSpacing: 20,
               children: [
-                Expanded(
+                SizedBox(
+                  width: 320,
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1239,8 +1430,9 @@ class _LabSectionState extends ConsumerState<_LabSection> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 20),
-                Expanded(
+                SizedBox(
+                  width: 320,
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1285,8 +1477,9 @@ class _LabSectionState extends ConsumerState<_LabSection> {
             Autocomplete<String>(
               optionsBuilder: (v) => v.text.isEmpty
                   ? ClinicalCatalog.antibiotics
-                  : ClinicalCatalog.antibiotics
-                      .where((a) => a.toLowerCase().contains(v.text.toLowerCase())),
+                  : ClinicalCatalog.antibiotics.where(
+                      (a) => a.toLowerCase().contains(v.text.toLowerCase()),
+                    ),
               onSelected: notifier.setTestedAntibiotic,
               fieldViewBuilder: (context, controller, focusNode, onSubmit) {
                 return TextField(
@@ -1309,7 +1502,10 @@ class _LabSectionState extends ConsumerState<_LabSection> {
             if (state.showResistanceWarning)
               Container(
                 margin: const EdgeInsets.only(top: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEF2F2),
                   border: Border.all(color: const Color(0xFFFECACA)),
@@ -1318,13 +1514,19 @@ class _LabSectionState extends ConsumerState<_LabSection> {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('⚠  Resistant isolate — stewardship note',
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF991B1B))),
+                    Text(
+                      '⚠  Resistant isolate — stewardship note',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF991B1B),
+                      ),
+                    ),
                     SizedBox(height: 5),
                     Text(
-                        'Prefer culture-guided therapy over empirical broad-spectrum cover, and record any alternative susceptible agent in Treatment. This result will be flagged to AMR surveillance.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF991B1B))),
+                      'Prefer culture-guided therapy over empirical broad-spectrum cover, and record any alternative susceptible agent in Treatment. This result will be flagged to AMR surveillance.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
+                    ),
                   ],
                 ),
               ),
@@ -1359,7 +1561,9 @@ class _PrescriptionsSection extends ConsumerWidget {
                     SectionTitle('Antimicrobial Prescriptions'),
                     Padding(
                       padding: EdgeInsets.only(top: 4),
-                      child: MutedText('Prescribing patterns are analysed alongside resistance trends.'),
+                      child: MutedText(
+                        'Prescribing patterns are analysed alongside resistance trends.',
+                      ),
                     ),
                   ],
                 ),
@@ -1367,11 +1571,17 @@ class _PrescriptionsSection extends ConsumerWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Antibiotic prescribed',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  const Text(
+                    'Antibiotic prescribed',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   Checkbox(
                     value: state.antibioticPrescribed,
-                    onChanged: (v) => notifier.setAntibioticPrescribed(v ?? false),
+                    onChanged: (v) =>
+                        notifier.setAntibioticPrescribed(v ?? false),
                   ),
                 ],
               ),
@@ -1401,7 +1611,11 @@ class _PrescriptionRow extends StatefulWidget {
   final PrescriptionDraft draft;
   final SubmitReportNotifier notifier;
 
-  const _PrescriptionRow({required this.index, required this.draft, required this.notifier});
+  const _PrescriptionRow({
+    required this.index,
+    required this.draft,
+    required this.notifier,
+  });
 
   @override
   State<_PrescriptionRow> createState() => _PrescriptionRowState();
@@ -1464,8 +1678,9 @@ class _PrescriptionRowState extends State<_PrescriptionRow> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
+          SizedBox(
+            width: 320,
+
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1478,8 +1693,9 @@ class _PrescriptionRowState extends State<_PrescriptionRow> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
+          SizedBox(
+            width: 320,
+
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1524,16 +1740,16 @@ class _SubmitBar extends ConsumerWidget {
             onPressed: state.canSubmit ? () => notifier.submit() : null,
             child: Text(state.isBusy ? 'Submitting…' : 'Submit Report'),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: MutedText(state.validationSummary),
-          ),
+          SizedBox(width: 320, child: MutedText(state.validationSummary)),
           if (state.errorMessage != null)
             Expanded(
               child: Text(
                 state.errorMessage!,
                 textAlign: TextAlign.right,
-                style: const TextStyle(color: AppColors.statusCritical, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.statusCritical,
+                  fontSize: 12,
+                ),
               ),
             ),
         ],
@@ -1567,18 +1783,28 @@ class _SuccessView extends ConsumerWidget {
                   color: Color(0xFFDCEFE4),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check, color: AppColors.accentGreen, size: 28),
+                child: const Icon(
+                  Icons.check,
+                  color: AppColors.accentGreen,
+                  size: 28,
+                ),
               ),
               const SizedBox(height: 18),
-              const Text('Report Submitted',
-                  style: TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const Text(
+                'Report Submitted',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
               const SizedBox(height: 10),
               MutedText(state.submittedSummary, textAlign: TextAlign.center),
               const SizedBox(height: 4),
               const MutedText(
-                  'This report has been de-identified and added to the surveillance pool.',
-                  textAlign: TextAlign.center),
+                'This report has been de-identified and added to the surveillance pool.',
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: () {

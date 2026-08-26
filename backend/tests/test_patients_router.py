@@ -35,7 +35,7 @@ def _register_patient(headers, name, mrn=None):
     resp = client.post("/reports", json=payload, headers=headers)
     assert resp.status_code == 200
 
-    found = client.get(f"/patients/search?q={name.split()[0]}", headers=headers).json()
+    found = client.get(f"/patients/search?q={name}", headers=headers).json()
     match = next(p for p in found if p["full_name"] == name)
     return match["patient_id"]
 
@@ -81,7 +81,7 @@ def test_reusing_patient_id_does_not_create_a_duplicate():
 
     matches = [
         p
-        for p in client.get(f"/patients/search?q={name.split()[0]}", headers=headers).json()
+        for p in client.get(f"/patients/search?q={name}", headers=headers).json()
         if p["full_name"] == name
     ]
 

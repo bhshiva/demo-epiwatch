@@ -340,6 +340,22 @@ class _TrendLineChart extends StatelessWidget {
                             curveSmoothness: 0.3,
                             color: AppColors.chartSeries[i % AppColors.chartSeries.length],
                             barWidth: 2.5,
+                            shadow: Shadow(
+                              color: AppColors.chartSeries[i % AppColors.chartSeries.length].withValues(alpha: 0.4),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.chartSeries[i % AppColors.chartSeries.length].withValues(alpha: 0.25),
+                                  AppColors.chartSeries[i % AppColors.chartSeries.length].withValues(alpha: 0.0),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
                             dotData: const FlDotData(show: false),
                           ),
                       ],
