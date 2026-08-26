@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/app_strings.dart';
+import '../state/locale.dart';
 import '../theme/app_colors.dart';
 
 /// The white bordered card used for every dashboard/records section, matching
@@ -32,10 +35,28 @@ class SectionTitle extends StatelessWidget {
   const SectionTitle(this.text, {super.key});
 
   @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: const TextStyle(
-            fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+  Widget build(BuildContext context) => Consumer(
+        builder: (context, ref, _) {
+          final lang = ref.watch(localeProvider);
+          final keyMap = {
+            'Patient Identity': 'patient_identity',
+            'Clinical Summary': 'clinical_summary',
+            'Diagnosis & Classification': 'diagnosis',
+            'ACORN Infection Origin & Syndrome': 'acorn_syndrome',
+            'Treatment & Prescriptions': 'treatment_prescriptions',
+            'Linked Microbiology / Lab Results': 'lab_link',
+            'Specimen & Isolation Details': 'record_culture',
+            'Microbiology Lab Record': 'record_culture',
+          };
+          final translationKey = keyMap[text] ?? text;
+          final translatedText = AppStrings.get(translationKey, lang);
+
+          return Text(
+            translatedText,
+            style: const TextStyle(
+                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+          );
+        },
       );
 }
 

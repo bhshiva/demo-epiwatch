@@ -39,22 +39,31 @@ def create_report(
 ):
     patient = _resolve_patient(body, db, doctor)
 
+    from app.services.translation import TranslationService
+
+    # Translate free-text fields into English prior to database persistence.
+    # source_language is the BCP-47 code sent by the client (e.g. "hi", "auto").
+    src = body.source_language or "auto"
+    body_complaints = TranslationService.translate_to_english(body.complaints, src)
+    body_medical_history = TranslationService.translate_to_english(body.medical_history, src)
+    body_treatment = TranslationService.translate_to_english(body.treatment, src)
+
     report = PatientReport(
         patient_id=patient.patient_id,
         doctor_id=doctor.doctor_id,
         facility_id=doctor.facility_id,
         report_date=body.report_date,
-        complaints=encrypt_field(db, body.complaints),
-        medical_history=encrypt_field(db, body.medical_history),
+        complaints=encrypt_field(db, body_complaints),
+        medical_history=encrypt_field(db, body_medical_history),
         symptoms={"items": body.symptoms},
         diagnosis=body.diagnosis,
         diagnosis_status=body.diagnosis_status,
-        treatment=encrypt_field(db, body.treatment),
+        treatment=encrypt_field(db, body_treatment),
         infection_syndrome=body.infection_syndrome,
-        infection_syndrome_other=body.infection_syndrome_other,
+        infection_syndrome_other=TranslationService.translate_to_english(body.infection_syndrome_other, src),
         infection_origin=body.infection_origin,
         patient_outcome=body.patient_outcome,
-        patient_outcome_other=body.patient_outcome_other,
+        patient_outcome_other=TranslationService.translate_to_english(body.patient_outcome_other, src),
     )
     db.add(report)
     db.flush()

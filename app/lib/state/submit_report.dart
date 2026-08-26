@@ -6,6 +6,7 @@ import '../services/api_exceptions.dart';
 import '../services/clinical_catalog.dart';
 import 'auth.dart';
 import 'dashboard.dart';
+import 'locale.dart';
 
 bool _isOther(String? value) => value != null && value.toLowerCase() == 'other';
 
@@ -261,7 +262,7 @@ class SubmitReportState {
       );
 
   /// Builds the request body — mirrors `BuildDto()`.
-  ReportCreateRequest buildRequest() {
+  ReportCreateRequest buildRequest({String sourceLanguage = 'auto'}) {
     final today = DateTime.now();
     final reportDate = '${today.year.toString().padLeft(4, '0')}-'
         '${today.month.toString().padLeft(2, '0')}-'
@@ -276,6 +277,7 @@ class SubmitReportState {
       patientSex: patientSex,
       patientDistrict: patientDistrict,
       reportDate: reportDate,
+      sourceLanguage: sourceLanguage,
       complaints: _blank(complaints),
       medicalHistory: _blank(medicalHistory),
       symptoms: symptoms,
@@ -698,7 +700,10 @@ class SubmitReportNotifier extends Notifier<SubmitReportState> {
 
     state = state.copyWith(isBusy: true, clearErrorMessage: true);
     final api = ref.read(apiClientProvider);
-    final request = state.buildRequest();
+    // Pass the currently selected UI language so the backend translator uses
+    // the exact source language rather than relying on auto-detect.
+    final lang = ref.read(localeProvider);
+    final request = state.buildRequest(sourceLanguage: lang.code);
 
     try {
       await api.createReport(request);

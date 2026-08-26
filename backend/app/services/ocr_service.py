@@ -76,6 +76,14 @@ def extract_with_google_vision_ocr(image_base64: str, document_type: str) -> str
         
         image_bytes = base64.b64decode(clean_b64)
 
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=[
+                genai.types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                prompt,
+            ],
+        )
+        return (response.text or "").strip()
         # Try gemini-3.6-flash, fallback to gemini-2.5-flash
         for model_name in ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash"]:
             try:

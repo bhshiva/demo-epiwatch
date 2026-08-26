@@ -140,10 +140,10 @@ class AbdmClient:
         cm_id: str | None = None,
         timeout: float = 10.0,
     ):
-        self.base_url = (base_url or os.getenv("ABDM_BASE_URL", "")).rstrip("/")
-        self.gateway_url = (gateway_url or os.getenv("ABDM_GATEWAY_URL", "")).rstrip("/")
-        self.client_id = client_id or os.getenv("ABDM_CLIENT_ID")
-        self.client_secret = client_secret or os.getenv("ABDM_CLIENT_SECRET")
+        self.base_url = (base_url if base_url is not None else os.getenv("ABDM_BASE_URL", "")).rstrip("/")
+        self.gateway_url = (gateway_url if gateway_url is not None else os.getenv("ABDM_GATEWAY_URL", "")).rstrip("/")
+        self.client_id = client_id if client_id is not None else os.getenv("ABDM_CLIENT_ID")
+        self.client_secret = client_secret if client_secret is not None else os.getenv("ABDM_CLIENT_SECRET")
         # "sbx" for sandbox, "abdm" for production.
         self.cm_id = cm_id or os.getenv("ABDM_CM_ID", "sbx")
         self.timeout = timeout

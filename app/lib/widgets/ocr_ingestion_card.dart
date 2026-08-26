@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_selector/file_selector.dart';
 import 'dart:convert';
 import '../models/ingestion_models.dart';
 import '../services/api_client.dart';
 import '../theme/app_colors.dart';
+import '../services/app_strings.dart';
+import '../state/locale.dart';
 
-class OcrIngestionCard extends StatefulWidget {
+class OcrIngestionCard extends ConsumerStatefulWidget {
   final String documentType; // 'clinical_report' or 'lab_isolate'
   final ApiClient apiClient;
   final Function(OcrParseResult result) onParsed;
@@ -18,10 +21,10 @@ class OcrIngestionCard extends StatefulWidget {
   });
 
   @override
-  State<OcrIngestionCard> createState() => _OcrIngestionCardState();
+  ConsumerState<OcrIngestionCard> createState() => _OcrIngestionCardState();
 }
 
-class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerProviderStateMixin {
+class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with SingleTickerProviderStateMixin {
   bool _isExpanded = true;
   bool _isProcessing = false;
   int _selectedTab = 0; // 0 = Samples, 1 = Google Lens / Vision Scan, 2 = Manual Transcription
@@ -153,10 +156,14 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(localeProvider);
     final isDoctor = widget.documentType == 'clinical_report';
     final cardTitle = isDoctor
-        ? 'Seamless Clinical Ingestion & Google OCR'
-        : 'Microbiology Laboratory AST Ingestion & Google OCR';
+        ? AppStrings.get('ocr_title_doctor', lang)
+        : AppStrings.get('ocr_title_lab', lang);
+    final cardSubtitle = isDoctor
+        ? AppStrings.get('ocr_subtitle_doctor', lang)
+        : AppStrings.get('ocr_subtitle_lab', lang);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 22),
@@ -223,14 +230,14 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(color: AppColors.accentTeal.withValues(alpha: 0.3)),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.auto_awesome, size: 12, color: AppColors.accentTeal),
-                                  SizedBox(width: 4),
+                                  const Icon(Icons.auto_awesome, size: 12, color: AppColors.accentTeal),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    'Google OCR & AI Audit',
-                                    style: TextStyle(
+                                    AppStrings.get('ocr_ai_audit', lang),
+                                    style: const TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.accentTeal,
@@ -243,9 +250,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          isDoctor
-                              ? 'Scan prescriptions, notes, or patient slips with automatic entity normalization and false-data detection.'
-                              : 'Scan microbiology culture sheets and AST disk diffusion / MIC tables with intrinsic resistance validation.',
+                          cardSubtitle,
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -268,6 +273,14 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
 
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  _buildTabButton(0, AppStrings.get('quick_templates', lang), Icons.collections_bookmark_outlined),
+                  const SizedBox(width: 8),
+                  _buildTabButton(1, AppStrings.get('google_lens', lang), Icons.camera_alt_outlined),
+                  const SizedBox(width: 8),
+                  _buildTabButton(2, AppStrings.get('paste_notes', lang), Icons.edit_note_outlined),
+                ],
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -323,6 +336,26 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
           border: Border.all(
             color: isSelected ? AppColors.accentTeal : AppColors.border,
           ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? Colors.white : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -348,6 +381,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
   }
 
   Widget _buildTemplatesTab(bool isDoctor) {
+    final lang = ref.watch(localeProvider);
     if (_sampleDocs.isEmpty) {
       return const Center(
         child: Padding(
@@ -364,9 +398,9 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'SELECT A CLINICAL SCENARIO TO TEST GOOGLE OCR & INTELLIGENCE AUDIT:',
-          style: TextStyle(
+        Text(
+          AppStrings.get('select_scenario', lang).toUpperCase(),
+          style: const TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.6,
@@ -383,6 +417,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
   }
 
   Widget _buildSampleDocumentCard(String key, Map<String, dynamic> doc) {
+    final lang = ref.watch(localeProvider);
     final title = doc['title'] as String? ?? key;
     final text = doc['text'] as String? ?? '';
     final isAnomaly = title.contains('Anomaly') || title.contains('Violation') || title.contains('MDR');
@@ -428,9 +463,9 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                           color: AppColors.statusMonitoring.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text(
-                          'Contains Test Anomaly',
-                          style: TextStyle(
+                        child: Text(
+                          AppStrings.get('ocr_contains_anomaly', lang),
+                          style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: AppColors.statusMonitoring,
@@ -458,7 +493,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
             ),
             icon: const Icon(Icons.bolt, size: 14),
-            label: const Text('Extract & Fill', style: TextStyle(fontSize: 11.5)),
+            label: Text(AppStrings.get('extract_fill', lang), style: const TextStyle(fontSize: 11.5)),
             onPressed: _isProcessing
                 ? null
                 : () {
@@ -472,6 +507,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
   }
 
   Widget _buildGoogleLensScanTab(bool isDoctor) {
+    final lang = ref.watch(localeProvider);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -487,19 +523,19 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
             color: AppColors.accentTeal,
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Google Cloud Vision & Multimodal OCR',
-            style: TextStyle(
+          Text(
+            AppStrings.get('ocr_cloud_vision', lang),
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Upload a prescription photo or scanned laboratory slip. Google OCR performs layout analysis, optical character recognition, and entity mapping.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          Text(
+            AppStrings.get('ocr_cloud_vision_sub', lang),
+            textAlign: Alignment.center == Alignment.center ? TextAlign.center : TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -513,7 +549,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 icon: const Icon(Icons.upload_file, size: 18),
-                label: const Text('Select Medical Image / PDF'),
+                label: Text(AppStrings.get('ocr_select_file', lang)),
                 onPressed: _isProcessing ? null : _pickAndProcessImage,
               ),
             ],
@@ -524,12 +560,13 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
   }
 
   Widget _buildManualTextTab(bool isDoctor) {
+    final lang = ref.watch(localeProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'PASTE OR TYPE CLINICAL DICTATION / REPORT TRANSCRIPTION:',
-          style: TextStyle(
+        Text(
+          AppStrings.get('ocr_paste_title', lang),
+          style: const TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.6,
@@ -564,7 +601,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             icon: const Icon(Icons.bolt, size: 16),
-            label: const Text('Run Normalization & Ingest'),
+            label: Text(AppStrings.get('ocr_run_normalization', lang)),
             onPressed: _isProcessing ? null : () => _processOcr(),
           ),
         ),
@@ -573,6 +610,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
   }
 
   Widget _buildStructuredExtractionCards(OcrParseResult result, bool isDoctor) {
+    final lang = ref.watch(localeProvider);
     final ext = result.extracted;
 
     return Column(
@@ -582,9 +620,9 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
           children: [
             const Icon(Icons.check_circle_outline, color: AppColors.accentTeal, size: 18),
             const SizedBox(width: 6),
-            const Text(
-              'STRUCTURED CLINICAL ENTITIES (EXTRACTED & NORMALIZED)',
-              style: TextStyle(
+            Text(
+              AppStrings.get('ocr_structured_entities', lang),
+              style: const TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.6,
@@ -593,7 +631,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
             ),
             const Spacer(),
             Text(
-              'Score: ${result.intelligenceAudit.plausibilityScore}%',
+              '${AppStrings.get("ocr_score", lang)}: ${result.intelligenceAudit.plausibilityScore}%',
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.bold,
@@ -619,10 +657,10 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                   spacing: 12,
                   runSpacing: 6,
                   children: [
-                    _buildPill('Patient', ext['full_name']?.toString() ?? '—', Icons.person_outline),
-                    _buildPill('Age', '${ext['exact_age'] ?? '—'} yrs (${ext['age_group'] ?? '—'})', Icons.cake_outlined),
-                    _buildPill('Sex', ext['sex']?.toString() ?? '—', Icons.wc_outlined),
-                    _buildPill('District', ext['district']?.toString() ?? '—', Icons.location_on_outlined),
+                    _buildPill(AppStrings.get('ocr_patient', lang), ext['full_name']?.toString() ?? '—', Icons.person_outline),
+                    _buildPill(AppStrings.get('ocr_age', lang), '${ext['exact_age'] ?? '—'} yrs (${ext['age_group'] ?? '—'})', Icons.cake_outlined),
+                    _buildPill(AppStrings.get('ocr_sex', lang), ext['sex']?.toString() ?? '—', Icons.wc_outlined),
+                    _buildPill(AppStrings.get('ocr_district', lang), ext['district']?.toString() ?? '—', Icons.location_on_outlined),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -632,9 +670,9 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                   spacing: 12,
                   runSpacing: 6,
                   children: [
-                    _buildPill('Diagnosis', ext['diagnosis']?.toString() ?? '—', Icons.medical_services_outlined),
-                    _buildPill('Syndrome', ext['infection_syndrome']?.toString() ?? '—', Icons.health_and_safety_outlined),
-                    _buildPill('Origin', ext['infection_origin']?.toString() ?? '—', Icons.apartment_outlined),
+                    _buildPill(AppStrings.get('ocr_diagnosis', lang), ext['diagnosis']?.toString() ?? '—', Icons.medical_services_outlined),
+                    _buildPill(AppStrings.get('ocr_syndrome', lang), ext['infection_syndrome']?.toString() ?? '—', Icons.health_and_safety_outlined),
+                    _buildPill(AppStrings.get('ocr_origin', lang), ext['infection_origin']?.toString() ?? '—', Icons.apartment_outlined),
                   ],
                 ),
               ],
@@ -655,17 +693,17 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                   spacing: 12,
                   runSpacing: 6,
                   children: [
-                    _buildPill('Sample ID', ext['accession_no']?.toString() ?? '—', Icons.qr_code),
-                    _buildPill('Specimen', ext['specimen_type']?.toString() ?? '—', Icons.science_outlined),
-                    _buildPill('Organism', ext['pathogen']?.toString() ?? '—', Icons.bug_report_outlined),
-                    _buildPill('Culture', ext['culture_result']?.toString() ?? '—', Icons.biotech_outlined),
+                    _buildPill(AppStrings.get('ocr_sample_id', lang), ext['accession_no']?.toString() ?? '—', Icons.qr_code),
+                    _buildPill(AppStrings.get('ocr_specimen', lang), ext['specimen_type']?.toString() ?? '—', Icons.science_outlined),
+                    _buildPill(AppStrings.get('ocr_organism', lang), ext['pathogen']?.toString() ?? '—', Icons.bug_report_outlined),
+                    _buildPill(AppStrings.get('ocr_culture', lang), ext['culture_result']?.toString() ?? '—', Icons.biotech_outlined),
                   ],
                 ),
                 if ((ext['ast_panel'] as List<dynamic>?)?.isNotEmpty ?? false) ...[
                   const SizedBox(height: 10),
-                  const Text(
-                    'AST PANEL RESULTS (STANDARDIZED):',
-                    style: TextStyle(
+                  Text(
+                    AppStrings.get('ocr_ast_results_title', lang),
+                    style: const TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
@@ -705,10 +743,19 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
   }
 
   Widget _buildAstChip(String antibiotic, String result) {
+    final lang = ref.watch(localeProvider);
     Color badgeColor = AppColors.statusNotTested;
-    if (result == 'Resistant') badgeColor = AppColors.statusCritical;
-    if (result == 'Susceptible') badgeColor = AppColors.statusNormal;
-    if (result == 'Intermediate') badgeColor = AppColors.statusMonitoring;
+    String localizedResult = AppStrings.get('ast_not_tested', lang);
+    if (result == 'Resistant') {
+      badgeColor = AppColors.statusCritical;
+      localizedResult = AppStrings.get('ast_resistant', lang);
+    } else if (result == 'Susceptible') {
+      badgeColor = AppColors.statusNormal;
+      localizedResult = AppStrings.get('ast_susceptible', lang);
+    } else if (result == 'Intermediate') {
+      badgeColor = AppColors.statusMonitoring;
+      localizedResult = AppStrings.get('ast_intermediate', lang);
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -728,7 +775,7 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
           const SizedBox(width: 6),
           Text(antibiotic, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
           const SizedBox(width: 4),
-          Text('($result)', style: TextStyle(fontSize: 11, color: badgeColor, fontWeight: FontWeight.bold)),
+          Text('($localizedResult)', style: TextStyle(fontSize: 11, color: badgeColor, fontWeight: FontWeight.bold)),
         ],
       ),
     );

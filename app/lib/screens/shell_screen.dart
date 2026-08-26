@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/nav_destination.dart';
 import '../state/auth.dart';
+import '../services/app_strings.dart';
+import '../state/locale.dart';
 import '../theme/app_colors.dart';
+import '../widgets/language_selector_widget.dart';
 
-/// Below this width the sidebar becomes a bottom navigation bar. Phones and
-/// narrow windows get the same destinations, laid out for the form factor.
+/// Below this width the sidebar becomes a bottom navigation bar.
 const kCompactBreakpoint = 900.0;
 
-/// Lets a screen ask the shell to switch tabs by key (e.g. the dashboard's
-/// "Submit Report" button), without the screen knowing the destination list
-/// or its own index in it.
+/// Lets a screen ask the shell to switch tabs by key.
 class ShellNav extends InheritedWidget {
   final void Function(String key) navigateTo;
 
@@ -55,12 +55,24 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     return ShellNav(
       navigateTo: _navigateTo,
       child: Scaffold(
+        backgroundColor: AppColors.bgPrimary,
         appBar: isCompact
             ? AppBar(
-                backgroundColor: AppColors.primaryButton,
-                foregroundColor: Colors.white,
-                title: Text(current.label),
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.textPrimary,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                title: Text(current.label,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: AppColors.textPrimary)),
                 actions: [_SignOutButton(onTap: _signOut, compact: true)],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(1),
+                  child: Container(height: 1, color: AppColors.border),
+                ),
               )
             : null,
         body: Row(
@@ -87,6 +99,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
         ),
         bottomNavigationBar: isCompact
             ? NavigationBar(
+                backgroundColor: Colors.white,
                 selectedIndex: _index,
                 onDestinationSelected: (i) => setState(() => _index = i),
                 destinations: [
@@ -101,12 +114,16 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 
   void _navigateTo(String key) {
     final i = widget.destinations.indexWhere((d) => d.key == key);
-    if (i == -1) return; // An unknown key leaves the current tab in place.
+    if (i == -1) return;
     setState(() => _index = i);
   }
 
   void _signOut() => ref.read(authProvider.notifier).signOut();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sidebar
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _Sidebar extends StatelessWidget {
   final String roleLabel;
@@ -130,45 +147,98 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 260,
-      color: AppColors.primaryButton,
+      width: 240,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(right: BorderSide(color: AppColors.border, width: 1)),
+      ),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // ── Brand ────────────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.health_and_safety_outlined,
-                          color: Colors.white, size: 24),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text('EpiWatch',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 19,
-                                fontWeight: FontWeight.w700)),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(child: _RoleBadge(label: roleLabel)),
-                    ],
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryButton,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.health_and_safety_outlined,
+                        color: Colors.white, size: 20),
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    '$roleCaption: $userName',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('EpiWatch',
+                            style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700)),
+                        Text(roleLabel,
+                            style: const TextStyle(
+                                color: AppColors.textMuted, fontSize: 11)),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const Divider(color: Colors.white24, height: 1),
-            const SizedBox(height: 10),
+            Container(height: 1, color: AppColors.border),
+            const SizedBox(height: 8),
+            // ── User pill ────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.bgTertiary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 15,
+                      backgroundColor: AppColors.primaryButton,
+                      child: Text(
+                        userName.isNotEmpty ? userName[0].toUpperCase() : 'D',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(userName,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12.5)),
+                          Text(roleCaption,
+                              style: const TextStyle(
+                                  color: AppColors.textMuted, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // ── Nav group label ───────────────────────────────────────────────
+            const _NavGroupLabel('MAIN'),
+            // ── Nav items ────────────────────────────────────────────────────
             for (var i = 0; i < destinations.length; i++)
               _NavTile(
                 destination: destinations[i],
@@ -176,7 +246,11 @@ class _Sidebar extends StatelessWidget {
                 onTap: () => onSelect(i),
               ),
             const Spacer(),
-            const Divider(color: Colors.white24, height: 1),
+            Container(height: 1, color: AppColors.border),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: LanguageSelectorWidget(),
+            ),
             _SignOutButton(onTap: onSignOut, compact: false),
             const SizedBox(height: 8),
           ],
@@ -186,25 +260,19 @@ class _Sidebar extends StatelessWidget {
   }
 }
 
-class _RoleBadge extends StatelessWidget {
+class _NavGroupLabel extends StatelessWidget {
   final String label;
-  const _RoleBadge({required this.label});
+  const _NavGroupLabel(this.label);
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: AppColors.accentMint,
-          borderRadius: BorderRadius.circular(4),
-        ),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
         child: Text(label,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
             style: const TextStyle(
-                color: Color(0xFF06301F),
                 fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.6)),
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: AppColors.textMuted)),
       );
 }
 
@@ -221,26 +289,67 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? Colors.white : Colors.white70;
     return Material(
-      color:
-          isActive ? Colors.white.withValues(alpha: 0.12) : Colors.transparent,
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive
+                ? AppColors.primaryButton.withValues(alpha: 0.08)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Row(
             children: [
-              Icon(destination.icon, size: 19, color: color),
-              const SizedBox(width: 12),
+              Container(
+                width: 3,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: isActive ? AppColors.primaryButton : Colors.transparent,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(
+                destination.icon,
+                size: 18,
+                color: isActive ? AppColors.primaryButton : AppColors.textMuted,
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  destination.label,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 13.5,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                  ),
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final lang = ref.watch(localeProvider);
+                    final keyMap = {
+                      'Dashboard': 'dashboard',
+                      'Patient Records': 'patient_records',
+                      'Submit Report': 'submit_report_nav',
+                      'Lab Dashboard': 'lab_dashboard',
+                      'Worklist': 'worklist',
+                      'Culture & AST': 'culture_ast',
+                      'Live Surveillance': 'live_surveillance',
+                      'Disease Trends': 'disease_trends',
+                      'Geographic Clusters': 'geographic_clusters',
+                      'AMR Watch': 'amr_watch',
+                      'Alerts': 'alerts',
+                      'Applications': 'applications',
+                    };
+                    final translationKey = keyMap[destination.label] ?? destination.label;
+                    final translatedLabel = AppStrings.get(translationKey, lang);
+
+                    return Text(
+                      translatedLabel,
+                      style: TextStyle(
+                        color: isActive ? AppColors.primaryButton : AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -251,29 +360,35 @@ class _NavTile extends StatelessWidget {
   }
 }
 
-class _SignOutButton extends StatelessWidget {
+class _SignOutButton extends ConsumerWidget {
   final VoidCallback onTap;
   final bool compact;
 
   const _SignOutButton({required this.onTap, required this.compact});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(localeProvider);
+    final label = AppStrings.get('sign_out', lang);
     if (compact) {
       return IconButton(
         onPressed: onTap,
         icon: const Icon(Icons.logout),
-        tooltip: 'Sign out',
+        tooltip: label,
       );
     }
-    return TextButton.icon(
-      onPressed: onTap,
-      icon: const Icon(Icons.logout, size: 17, color: Colors.white70),
-      label: const Text('Sign out',
-          style: TextStyle(color: Colors.white70, fontSize: 13)),
-      style: TextButton.styleFrom(
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        alignment: Alignment.centerLeft,
+        child: Row(
+          children: [
+            const Icon(Icons.logout, size: 16, color: AppColors.textMuted),
+            const SizedBox(width: 10),
+            Text(label,
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          ],
+        ),
       ),
     );
   }

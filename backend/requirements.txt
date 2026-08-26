@@ -13,4 +13,5 @@ neo4j
 scikit-learn
 joblib
 matplotlib
+deep-translator
 google-genai

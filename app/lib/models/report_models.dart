@@ -92,6 +92,10 @@ class ReportCreateRequest {
   final String patientSex;
   final String patientDistrict;
   final String reportDate;
+  /// BCP-47 language code of the UI at submission time (e.g. "hi", "mr",
+  /// "auto"). Forwarded to the server so GoogleTranslator uses the exact
+  /// source language rather than relying on auto-detect.
+  final String sourceLanguage;
   final String? complaints;
   final String? medicalHistory;
   final List<String> symptoms;
@@ -115,6 +119,7 @@ class ReportCreateRequest {
     required this.patientSex,
     required this.patientDistrict,
     required this.reportDate,
+    this.sourceLanguage = 'auto',
     this.complaints,
     this.medicalHistory,
     this.symptoms = const [],
@@ -139,6 +144,7 @@ class ReportCreateRequest {
         'patient_sex': patientSex,
         'patient_district': patientDistrict,
         'report_date': reportDate,
+        'source_language': sourceLanguage,
         'complaints': complaints,
         'medical_history': medicalHistory,
         'symptoms': symptoms,
