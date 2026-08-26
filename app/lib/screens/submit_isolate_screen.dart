@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/clinical_catalog.dart';
+import '../state/auth.dart';
 import '../state/submit_isolate.dart';
 import '../theme/app_colors.dart';
+import '../widgets/intelligence_audit_banner.dart';
+import '../widgets/ocr_ingestion_card.dart';
 import '../widgets/section_card.dart';
 
 /// Record Culture & Susceptibility: one organism per isolate, tested against
@@ -99,6 +102,19 @@ class _SubmitIsolateScreenState extends ConsumerState<SubmitIsolateScreen> {
                 : 'One organism per isolate, tested against a panel of antibiotics. '
                     'Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies.'),
             const SizedBox(height: 22),
+            if (!state.isEditing)
+              OcrIngestionCard(
+                documentType: 'lab_isolate',
+                apiClient: ref.read(apiClientProvider),
+                onParsed: (result) {
+                  notifier.applyOcrResult(result);
+                },
+              ),
+            if (state.intelligenceAudit != null)
+              IntelligenceAuditBanner(
+                audit: state.intelligenceAudit!,
+                onDismiss: notifier.clearIntelligenceAudit,
+              ),
             if (state.error != null) ...[
               _ErrorBanner(message: state.error!),
               const SizedBox(height: 18),

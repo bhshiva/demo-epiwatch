@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/application_models.dart';
 import '../models/dashboard_models.dart';
+import '../models/ingestion_models.dart';
 import '../models/lab_models.dart';
 import '../models/patient_models.dart';
 import '../models/report_models.dart';
@@ -34,8 +35,14 @@ class ApiClient {
     ));
   }
 
-  /// The Android emulator reaches the host machine on 10.0.2.2, not localhost.
+  /// Base URL determination:
+  /// 1. Compile-time `--dart-define=API_URL=http://...` if provided.
+  /// 2. Android emulator default `10.0.2.2:8000`.
+  /// 3. Standard localhost `127.0.0.1:8000` (works on desktop/web/adb reverse).
   static String get defaultBaseUrl {
+    const envUrl = String.fromEnvironment('API_URL',
+        defaultValue: String.fromEnvironment('API_BASE_URL'));
+    if (envUrl.isNotEmpty) return envUrl;
     if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000';
     return 'http://127.0.0.1:8000';
   }
@@ -252,5 +259,67 @@ class ApiClient {
   Future<FacilityApplication> rejectApplication(String applicationId, String reason) async {
     final res = await post('/admin/applications/$applicationId/reject', {'reason': reason});
     return FacilityApplication.fromJson(res);
+  }
+
+  // --- OCR Ingestion & Intelligence Layer ---
+
+  Future<OcrParseResult> parseOcrDocument(
+    String documentType, {
+    String? rawText,
+    String? imageBase64,
+    String? fileName,
+  }) async {
+    final res = await post('/api/v1/ingestion/ocr-parse', {
+      'document_type': documentType,
+      'raw_text': rawText,
+      'image_base64': imageBase64,
+      'file_name': fileName,
+    });
+    return OcrParseResult.fromJson(res);
+  }
+
+  Future<IntelligenceAudit> validateReport({
+    int? exactAge,
+    required String sex,
+    required String district,
+    required List<String> symptoms,
+    required String diagnosis,
+    required String infectionSyndrome,
+    required String infectionOrigin,
+    String diagnosisStatus = 'Confirmed',
+  }) async {
+    final res = await post('/api/v1/ingestion/validate-report', {
+      'exact_age': exactAge,
+      'sex': sex,
+      'district': district,
+      'symptoms': symptoms,
+      'diagnosis': diagnosis,
+      'infection_syndrome': infectionSyndrome,
+      'infection_origin': infectionOrigin,
+      'diagnosis_status': diagnosisStatus,
+    });
+    return IntelligenceAudit.fromJson(res);
+  }
+
+  Future<IntelligenceAudit> validateIsolate({
+    required String specimenType,
+    required String pathogen,
+    required List<Map<String, dynamic>> astPanel,
+    String? patientSex,
+    int? patientAge,
+  }) async {
+    final res = await post('/api/v1/ingestion/validate-isolate', {
+      'specimen_type': specimenType,
+      'pathogen': pathogen,
+      'ast_panel': astPanel,
+      'patient_sex': patientSex,
+      'patient_age': patientAge,
+    });
+    return IntelligenceAudit.fromJson(res);
+  }
+
+  Future<Map<String, dynamic>> getSampleDocuments() async {
+    final res = await get('/api/v1/ingestion/sample-documents');
+    return res;
   }
 }

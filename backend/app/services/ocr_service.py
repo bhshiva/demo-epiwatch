@@ -1,0 +1,302 @@
+import os
+import re
+import base64
+from typing import Dict, List, Any, Optional
+from datetime import date, datetime
+
+from app.services.normalization_service import (
+    normalize_sex,
+    normalize_district,
+    normalize_pathogen,
+    normalize_antibiotic,
+    normalize_ast_result,
+    normalize_specimen,
+    normalize_syndrome,
+    normalize_origin,
+    normalize_symptoms,
+    age_to_age_group,
+    ANTIBIOTIC_CATALOG,
+)
+from app.services.clinical_intelligence import (
+    audit_lab_isolate,
+    audit_clinician_report,
+)
+
+
+def extract_with_google_vision_ocr(image_base64: str, document_type: str) -> str:
+    """
+    Uses Google Cloud Vision / Gemini Vision multimodal OCR to extract structured
+    text from uploaded images of prescriptions, clinical notes, or lab sheets.
+    """
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key or not image_base64:
+        return ""
+
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        
+        prompt = (
+            "You are a medical document OCR engine. Transcribe the patient demographics, "
+            "clinical complaints, diagnosis, symptoms, specimen, pathogen, and full AST antibiotic "
+            "susceptibility matrix from this medical document accurately."
+        )
+        if document_type == "lab_isolate":
+            prompt = (
+                "You are an expert clinical microbiology OCR engine. Transcribe the accession number, "
+                "specimen type, culture result, identified pathogen organism, and the complete tabular "
+                "Antimicrobial Susceptibility Test (AST) panel listing every antibiotic, disc diffusion zone diameter (mm), "
+                "MIC value (ug/mL), and Susceptible/Intermediate/Resistant (SIR) interpretation accurately."
+            )
+
+        # Remove header if present (e.g. data:image/png;base64,...)
+        clean_b64 = image_base64
+        if "," in clean_b64:
+            clean_b64 = clean_b64.split(",", 1)[1]
+        
+        image_bytes = base64.b64decode(clean_b64)
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                genai.types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                prompt,
+            ],
+        )
+        return response.text or ""
+    except Exception as e:
+        # Graceful fallback to regex/local parsing
+        return ""
+
+
+def parse_raw_clinical_text(text: str, ocr_engine: str = "Google Vision & Local OCR") -> Dict[str, Any]:
+    """
+    Parses unstructured or semi-structured clinical text from an OCR scan of a doctor's report.
+    """
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    full_text = " ".join(lines)
+
+    extracted_name = None
+    extracted_age = None
+    extracted_sex = None
+    extracted_district = None
+    extracted_complaints = None
+    extracted_diagnosis = None
+    extracted_syndrome = None
+    extracted_origin = None
+    extracted_outcome = None
+    extracted_symptoms: List[str] = []
+
+    # Regex search patterns for key demographics and clinical entities
+    name_match = re.search(r"(?:name|pt name|patient name|patient)\s*[:\-]\s*([A-Za-z\.\s]+?)(?:\s*[\|\n,;]|\s+age\b|\s+sex\b|\s+gender\b|\s+date\b|$)", full_text, re.IGNORECASE)
+    if name_match:
+        extracted_name = name_match.group(1).strip()
+
+    age_match = re.search(r"(?:age|yrs|years old|yr)\s*[:\-]?\s*(\d{1,3})", full_text, re.IGNORECASE)
+    if age_match:
+        try:
+            extracted_age = int(age_match.group(1))
+        except ValueError:
+            pass
+
+    sex_match = re.search(r"(?:sex|gender)\s*[:\-]\s*(male|female|other|m\b|f\b)", full_text, re.IGNORECASE)
+    if sex_match:
+        extracted_sex = sex_match.group(1).strip()
+
+    district_match = re.search(r"(?:district|city|location|address)\s*[:\-]\s*([A-Za-z]+)", full_text, re.IGNORECASE)
+    if district_match:
+        extracted_district = district_match.group(1).strip()
+
+    diag_match = re.search(r"(?:diagnosis|dx|impression|condition)\s*[:\-]\s*([^\.\n,;]+)", full_text, re.IGNORECASE)
+    if diag_match:
+        extracted_diagnosis = diag_match.group(1).strip()
+
+    syndrome_match = re.search(r"(?:syndrome|infection syndrome)\s*[:\-]\s*([^\.\n,;]+)", full_text, re.IGNORECASE)
+    if syndrome_match:
+        extracted_syndrome = syndrome_match.group(1).strip()
+
+    origin_match = re.search(r"(?:origin|infection origin|source)\s*[:\-]\s*([^\.\n,;]+)", full_text, re.IGNORECASE)
+    if origin_match:
+        extracted_origin = origin_match.group(1).strip()
+
+    complaints_match = re.search(r"(?:complaints|chief complaints|c\/o|history|h\/o)\s*[:\-]\s*([^\.\n;]+)", full_text, re.IGNORECASE)
+    if complaints_match:
+        extracted_complaints = complaints_match.group(1).strip()
+
+    # Extract symptoms from free text
+    extracted_symptoms = normalize_symptoms(full_text)
+
+    # Normalization
+    norm_sex, _ = normalize_sex(extracted_sex)
+    norm_district, _ = normalize_district(extracted_district)
+    norm_syndrome, _, _ = normalize_syndrome(extracted_syndrome or extracted_diagnosis or full_text)
+    norm_origin, _ = normalize_origin(extracted_origin or full_text)
+    age_group = age_to_age_group(extracted_age) if extracted_age is not None else "25-44"
+
+    # Run Clinical Intelligence Audit
+    audit_result = audit_clinician_report(
+        exact_age=extracted_age,
+        sex=norm_sex,
+        district=norm_district,
+        symptoms=extracted_symptoms,
+        diagnosis=extracted_diagnosis or norm_syndrome,
+        infection_syndrome=norm_syndrome,
+        infection_origin=norm_origin,
+        diagnosis_status="Confirmed" if extracted_diagnosis else "Suspected",
+    )
+
+    return {
+        "raw_text": text,
+        "ocr_engine": ocr_engine,
+        "extracted": {
+            "full_name": extracted_name or "Patient",
+            "exact_age": extracted_age or 35,
+            "age_group": age_group,
+            "sex": norm_sex,
+            "district": norm_district,
+            "complaints": extracted_complaints or full_text[:120],
+            "diagnosis": extracted_diagnosis or norm_syndrome,
+            "diagnosis_status": "Confirmed" if extracted_diagnosis else "Suspected",
+            "infection_syndrome": norm_syndrome,
+            "infection_origin": norm_origin,
+            "patient_outcome": "Admitted - under treatment",
+            "symptoms": extracted_symptoms,
+        },
+        "intelligence_audit": {
+            "plausibility_score": audit_result.plausibility_score,
+            "status": audit_result.status,
+            "is_valid": audit_result.is_valid,
+            "summary": audit_result.summary,
+            "findings": audit_result.findings,
+            "mdr_flag": audit_result.mdr_flag,
+        },
+    }
+
+
+def parse_raw_ast_text(text: str, ocr_engine: str = "Google Vision & Local OCR") -> Dict[str, Any]:
+    """
+    Parses unstructured or tabular microbiology culture & AST report text from an OCR scan.
+    """
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    full_text = " ".join(lines)
+
+    extracted_accession = None
+    extracted_specimen = None
+    extracted_culture = None
+    extracted_pathogen = None
+    extracted_ast_method = "Disk diffusion"
+    extracted_ast_panel: List[Dict[str, Any]] = []
+
+    # Accession No / Lab No
+    acc_match = re.search(r"(?:lab no|lab_id|accession|acc no|sample no|specimen id)\s*[:\-]?\s*([A-Za-z0-9\-_]+)", full_text, re.IGNORECASE)
+    if acc_match:
+        extracted_accession = acc_match.group(1).strip()
+
+    # Specimen Type
+    spec_match = re.search(r"(?:specimen|sample type|sample|source)\s*[:\-]\s*([^\.\n,;]+)", full_text, re.IGNORECASE)
+    if spec_match:
+        extracted_specimen = spec_match.group(1).strip()
+    else:
+        # Check specimen keywords in text
+        for candidate in ["Blood", "Urine", "Sputum", "Stool", "CSF", "Wound swab", "Pus"]:
+            if re.search(r"\b" + candidate + r"\b", full_text, re.IGNORECASE):
+                extracted_specimen = candidate
+                break
+
+    # Pathogen / Organism
+    org_match = re.search(r"(?:organism|pathogen|isolate|isolate identified|growth of)\s*[:\-]\s*([^\.\n,;]+)", full_text, re.IGNORECASE)
+    if org_match:
+        extracted_pathogen = org_match.group(1).strip()
+    else:
+        # Check common pathogens
+        for candidate in ["Escherichia coli", "E. coli", "Klebsiella pneumoniae", "Pseudomonas aeruginosa", "Staphylococcus aureus", "Acinetobacter baumannii", "Salmonella Typhi", "Streptococcus pneumoniae"]:
+            if re.search(r"\b" + re.escape(candidate) + r"\b", full_text, re.IGNORECASE):
+                extracted_pathogen = candidate
+                break
+
+    # Culture result
+    if re.search(r"no growth|sterile|negative", full_text, re.IGNORECASE):
+        extracted_culture = "No growth"
+    elif re.search(r"contaminated", full_text, re.IGNORECASE):
+        extracted_culture = "Contaminated"
+    else:
+        extracted_culture = "Growth - organism identified"
+
+    # AST Table Line-by-line Parsing
+    parsed_drugs = set()
+    for line in lines:
+        for drug_name in ANTIBIOTIC_CATALOG.keys():
+            aliases = [drug_name.lower()] + ANTIBIOTIC_CATALOG[drug_name]["aliases"]
+            found_drug = False
+            for alias in aliases:
+                pattern = r"\b" + re.escape(alias) + r"\b"
+                if re.search(pattern, line, re.IGNORECASE):
+                    found_drug = True
+                    break
+
+            if found_drug and drug_name not in parsed_drugs:
+                parsed_drugs.add(drug_name)
+
+                # Determine AST Result
+                ast_res = "Not tested"
+                if re.search(r"\b(resistant|res|\bR\b)\b", line, re.IGNORECASE):
+                    ast_res = "Resistant"
+                elif re.search(r"\b(susceptible|sensitive|sens|\bS\b)\b", line, re.IGNORECASE):
+                    ast_res = "Susceptible"
+                elif re.search(r"\b(intermediate|mod|\bI\b)\b", line, re.IGNORECASE):
+                    ast_res = "Intermediate"
+
+                # Extract MIC / Zone Diameter
+                zone_match = re.search(r"(\d{1,2})\s*(?:mm|millimeters)", line, re.IGNORECASE)
+                zone_mm = int(zone_match.group(1)) if zone_match else None
+
+                mic_match = re.search(r"([<>=]{1,2})?\s*(\d+(?:\.\d+)?)\s*(?:ug/ml|mcg/ml|mg/l|ug|mg)", line, re.IGNORECASE)
+                mic_val = None
+                mic_op = None
+                if mic_match:
+                    mic_op = mic_match.group(1) or "="
+                    mic_val = float(mic_match.group(2))
+
+                extracted_ast_panel.append({
+                    "antibiotic": drug_name,
+                    "antibiotic_class": ANTIBIOTIC_CATALOG[drug_name]["class"],
+                    "ast_result": ast_res,
+                    "mic_value": mic_val,
+                    "mic_operator": mic_op,
+                    "zone_diameter_mm": zone_mm,
+                    "method": "Disk diffusion",
+                })
+
+    # Normalization
+    norm_specimen, _, _ = normalize_specimen(extracted_specimen)
+    norm_pathogen, _, _ = normalize_pathogen(extracted_pathogen)
+
+    # Run Microbiology Intelligence Audit
+    audit_result = audit_lab_isolate(
+        specimen_type=norm_specimen,
+        pathogen=norm_pathogen,
+        ast_panel=extracted_ast_panel,
+    )
+
+    return {
+        "raw_text": text,
+        "ocr_engine": ocr_engine,
+        "extracted": {
+            "accession_no": extracted_accession or "ACC-2026-8801",
+            "test_date": date.today().isoformat(),
+            "specimen_type": norm_specimen,
+            "culture_result": extracted_culture,
+            "pathogen": norm_pathogen,
+            "infection_origin": "Community-acquired",
+            "ast_method": extracted_ast_method,
+            "ast_panel": extracted_ast_panel,
+        },
+        "intelligence_audit": {
+            "plausibility_score": audit_result.plausibility_score,
+            "status": audit_result.status,
+            "is_valid": audit_result.is_valid,
+            "summary": audit_result.summary,
+            "findings": audit_result.findings,
+            "mdr_flag": audit_result.mdr_flag,
+        },
+    }

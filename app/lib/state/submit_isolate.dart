@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/ingestion_models.dart';
 import '../models/lab_models.dart';
 import '../services/api_exceptions.dart';
 import '../services/clinical_catalog.dart';
@@ -77,6 +78,7 @@ class SubmitIsolateState {
   final String submittedSummary;
   final String? error;
   final String? editingIsolateId;
+  final IntelligenceAudit? intelligenceAudit;
 
   const SubmitIsolateState({
     this.accessionNo = '',
@@ -97,6 +99,7 @@ class SubmitIsolateState {
     this.submittedSummary = '',
     this.error,
     this.editingIsolateId,
+    this.intelligenceAudit,
   });
 
   /// Finalizing/amending a worklist entry rather than recording a new one.
@@ -164,6 +167,8 @@ class SubmitIsolateState {
     String? submittedSummary,
     String? error,
     String? editingIsolateId,
+    IntelligenceAudit? intelligenceAudit,
+    bool clearIntelligenceAudit = false,
   }) =>
       SubmitIsolateState(
         accessionNo: accessionNo ?? this.accessionNo,
@@ -184,6 +189,9 @@ class SubmitIsolateState {
         submittedSummary: submittedSummary ?? this.submittedSummary,
         error: error,
         editingIsolateId: editingIsolateId ?? this.editingIsolateId,
+        intelligenceAudit: clearIntelligenceAudit
+            ? null
+            : (intelligenceAudit ?? this.intelligenceAudit),
       );
 }
 
@@ -321,4 +329,67 @@ class SubmitIsolateNotifier extends Notifier<SubmitIsolateState> {
   /// Resets the form so the next isolate starts clean, matching
   /// `SubmitIsolateViewModel.SubmitAnother`.
   void submitAnother() => state = const SubmitIsolateState();
+
+  // --- OCR Ingestion & Intelligence Validation ---
+
+  void applyOcrResult(OcrParseResult ocr) {
+    final ext = ocr.extracted;
+    final rawPanel = (ext['ast_panel'] as List<dynamic>?) ?? [];
+
+    final parsedRows = rawPanel.map((item) {
+      final m = item as Map<String, dynamic>;
+      return AstRowDraft(
+        antibiotic: m['antibiotic'] as String? ?? '',
+        astResult: m['ast_result'] as String? ?? '',
+        micValue: m['mic_value']?.toString() ?? '',
+        micOperator: m['mic_operator'] as String? ?? '',
+        zoneDiameter: m['zone_diameter_mm']?.toString() ?? '',
+        method: m['method'] as String? ?? 'Disk diffusion',
+      );
+    }).toList();
+
+    state = state.copyWith(
+      accessionNo: ext['accession_no'] as String? ?? state.accessionNo,
+      specimenType: ext['specimen_type'] as String? ?? state.specimenType,
+      cultureResult: ext['culture_result'] as String? ?? state.cultureResult,
+      pathogen: ext['pathogen'] as String? ?? state.pathogen,
+      infectionOrigin: ext['infection_origin'] as String? ?? state.infectionOrigin,
+      panel: parsedRows.isNotEmpty ? parsedRows : state.panel,
+      intelligenceAudit: ocr.intelligenceAudit,
+      error: null,
+    );
+  }
+
+  Future<void> runIntelligenceValidation() async {
+    if (state.specimenType.isEmpty || state.pathogen.isEmpty) return;
+
+    final api = ref.read(apiClientProvider);
+    try {
+      final panelData = state.panel
+          .where((r) => r.isComplete)
+          .map((r) => {
+                'antibiotic': r.antibiotic,
+                'antibiotic_class': r.antibioticClass,
+                'ast_result': r.astResult.isEmpty ? null : r.astResult,
+                'mic_value': double.tryParse(r.micValue),
+                'mic_operator': r.micOperator.isEmpty ? null : r.micOperator,
+                'zone_diameter_mm': int.tryParse(r.zoneDiameter),
+                'method': r.method.isEmpty ? null : r.method,
+              })
+          .toList();
+
+      final audit = await api.validateIsolate(
+        specimenType: state.specimenType,
+        pathogen: state.pathogen,
+        astPanel: panelData,
+      );
+      state = state.copyWith(intelligenceAudit: audit);
+    } catch (_) {
+      // Non-blocking background intelligence check
+    }
+  }
+
+  void clearIntelligenceAudit() {
+    state = state.copyWith(clearIntelligenceAudit: true);
+  }
 }

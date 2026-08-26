@@ -48,8 +48,8 @@ ORDER BY facility_id
 
 def _gds_version(session) -> str | None:
     try:
-        record = session.run("CALL gds.version() YIELD version RETURN version").single()
-        return record["version"] if record else None
+        record = session.run("CALL gds.version()").single()
+        return record[0] if record else None
     except ClientError:
         return None
 

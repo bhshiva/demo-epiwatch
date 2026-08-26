@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient_models.dart';
 import '../screens/shell_screen.dart';
 import '../services/clinical_catalog.dart';
+import '../state/auth.dart';
 import '../state/submit_report.dart';
 import '../theme/app_colors.dart';
+import '../widgets/intelligence_audit_banner.dart';
+import '../widgets/ocr_ingestion_card.dart';
 import '../widgets/section_card.dart';
 import '../widgets/status_chip.dart';
 
@@ -27,6 +30,7 @@ class _SubmitReportScreenState extends ConsumerState<SubmitReportScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(submitReportProvider);
+    final notifier = ref.read(submitReportProvider.notifier);
 
     if (state.isSubmitted) {
       return _SuccessView(state: state);
@@ -41,25 +45,37 @@ class _SubmitReportScreenState extends ConsumerState<SubmitReportScreen> {
               constraints: const BoxConstraints(maxWidth: 920),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text('Submit Clinical Report',
+                children: [
+                  const Text('Submit Clinical Report',
                       style: TextStyle(
                           fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                  SizedBox(height: 7),
-                  MutedText(
+                  const SizedBox(height: 7),
+                  const MutedText(
                       'Reports are de-identified before aggregation. Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies so data is comparable across facilities.'),
-                  SizedBox(height: 20),
-                  _PatientSection(),
-                  SizedBox(height: 18),
-                  _ClinicalSummarySection(),
-                  SizedBox(height: 18),
-                  _DiagnosisSection(),
-                  SizedBox(height: 18),
-                  _AcornSection(),
-                  SizedBox(height: 18),
-                  _LabSection(),
-                  SizedBox(height: 18),
-                  _PrescriptionsSection(),
+                  const SizedBox(height: 20),
+                  OcrIngestionCard(
+                    documentType: 'clinical_report',
+                    apiClient: ref.read(apiClientProvider),
+                    onParsed: (result) {
+                      notifier.applyOcrResult(result);
+                    },
+                  ),
+                  if (state.intelligenceAudit != null)
+                    IntelligenceAuditBanner(
+                      audit: state.intelligenceAudit!,
+                      onDismiss: notifier.clearIntelligenceAudit,
+                    ),
+                  const _PatientSection(),
+                  const SizedBox(height: 18),
+                  const _ClinicalSummarySection(),
+                  const SizedBox(height: 18),
+                  const _DiagnosisSection(),
+                  const SizedBox(height: 18),
+                  const _AcornSection(),
+                  const SizedBox(height: 18),
+                  const _LabSection(),
+                  const SizedBox(height: 18),
+                  const _PrescriptionsSection(),
                 ],
               ),
             ),

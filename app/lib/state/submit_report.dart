@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/ingestion_models.dart';
 import '../models/patient_models.dart';
 import '../models/report_models.dart';
 import '../services/api_exceptions.dart';
@@ -106,6 +107,7 @@ class SubmitReportState {
   final String? errorMessage;
   final bool isSubmitted;
   final String submittedSummary;
+  final IntelligenceAudit? intelligenceAudit;
 
   const SubmitReportState({
     this.patientSearchText = '',
@@ -155,6 +157,7 @@ class SubmitReportState {
     this.errorMessage,
     this.isSubmitted = false,
     this.submittedSummary = '',
+    this.intelligenceAudit,
   });
 
   bool get hasSelectedPatient => selectedPatient != null;
@@ -363,6 +366,8 @@ class SubmitReportState {
     bool clearErrorMessage = false,
     bool? isSubmitted,
     String? submittedSummary,
+    IntelligenceAudit? intelligenceAudit,
+    bool clearIntelligenceAudit = false,
   }) {
     return SubmitReportState(
       patientSearchText: patientSearchText ?? this.patientSearchText,
@@ -412,6 +417,9 @@ class SubmitReportState {
       errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       isSubmitted: isSubmitted ?? this.isSubmitted,
       submittedSummary: submittedSummary ?? this.submittedSummary,
+      intelligenceAudit: clearIntelligenceAudit
+          ? null
+          : (intelligenceAudit ?? this.intelligenceAudit),
     );
   }
 }
@@ -720,5 +728,58 @@ class SubmitReportNotifier extends Notifier<SubmitReportState> {
 
   void submitAnother() {
     state = const SubmitReportState();
+  }
+
+  // --- OCR Ingestion & Clinical Intelligence Validation ---
+
+  void applyOcrResult(OcrParseResult ocr) {
+    final ext = ocr.extracted;
+    final extractedSymptoms = (ext['symptoms'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        <String>[];
+
+    state = state.copyWith(
+      isRegisteringNewPatient: true,
+      clearSelectedPatient: true,
+      newPatientName: ext['full_name'] as String? ?? state.newPatientName,
+      patientAge: ext['exact_age']?.toString() ?? state.patientAge,
+      patientSex: ext['sex'] as String? ?? state.patientSex,
+      patientDistrict: ext['district'] as String? ?? state.patientDistrict,
+      complaints: ext['complaints'] as String? ?? state.complaints,
+      diagnosis: ext['diagnosis'] as String? ?? state.diagnosis,
+      diagnosisStatus: ext['diagnosis_status'] as String? ?? state.diagnosisStatus,
+      infectionSyndrome: ext['infection_syndrome'] as String? ?? state.infectionSyndrome,
+      infectionOrigin: ext['infection_origin'] as String? ?? state.infectionOrigin,
+      patientOutcome: ext['patient_outcome'] as String? ?? state.patientOutcome,
+      symptoms: extractedSymptoms.isNotEmpty ? extractedSymptoms : state.symptoms,
+      intelligenceAudit: ocr.intelligenceAudit,
+      clearErrorMessage: true,
+    );
+  }
+
+  Future<void> runIntelligenceValidation() async {
+    if (state.patientSex.isEmpty || state.patientDistrict.isEmpty) return;
+
+    final api = ref.read(apiClientProvider);
+    try {
+      final audit = await api.validateReport(
+        exactAge: int.tryParse(state.patientAge),
+        sex: state.patientSex,
+        district: state.patientDistrict,
+        symptoms: state.symptoms,
+        diagnosis: state.diagnosis.isEmpty ? 'Suspected illness' : state.diagnosis,
+        infectionSyndrome: state.infectionSyndrome.isEmpty ? 'Other' : state.infectionSyndrome,
+        infectionOrigin: state.infectionOrigin,
+        diagnosisStatus: state.diagnosisStatus,
+      );
+      state = state.copyWith(intelligenceAudit: audit);
+    } catch (_) {
+      // Non-blocking background intelligence check
+    }
+  }
+
+  void clearIntelligenceAudit() {
+    state = state.copyWith(clearIntelligenceAudit: true);
   }
 }
