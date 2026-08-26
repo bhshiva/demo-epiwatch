@@ -17,8 +17,8 @@ class ApiClient {
       : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: baseUrl ?? defaultBaseUrl,
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 20),
+              connectTimeout: const Duration(seconds: 45),
+              receiveTimeout: const Duration(seconds: 60),
               // Let non-2xx through so the interceptor can classify it,
               // rather than Dio throwing a generic DioException first.
               validateStatus: (_) => true,
