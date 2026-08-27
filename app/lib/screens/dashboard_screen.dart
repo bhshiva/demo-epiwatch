@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/dashboard_models.dart';
+import '../services/app_strings.dart';
 import '../services/demo_data.dart';
 import '../state/dashboard.dart';
+import '../state/locale.dart';
 import '../theme/app_colors.dart';
 import '../widgets/section_card.dart';
 import '../widgets/status_chip.dart';
@@ -137,43 +139,53 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 12,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Consumer(
+      builder: (context, ref, _) {
+        final lang = ref.watch(localeProvider);
+        final title = AppStrings.get('clinical_workspace', lang);
+        final doctorLabel = AppStrings.get('logged_in_doctor', lang);
+        final facilityLabel = AppStrings.get('facility', lang);
+        final submitBtn = AppStrings.get('submit_report', lang);
+
+        return Wrap(
+          spacing: 16,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Text('Clinical Workspace',
-                style: TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const SizedBox(height: 6),
-            RichText(
-              text: TextSpan(
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                children: [
-                  const TextSpan(text: 'Logged-in Doctor: '),
-                  TextSpan(
-                      text: doctorName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                  const TextSpan(text: '  •  Facility: '),
-                  TextSpan(
-                      text: facilityName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, color: AppColors.accentTeal)),
-                ],
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title.isNotEmpty && title != 'clinical_workspace' ? title : 'Clinical Workspace',
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                const SizedBox(height: 6),
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    children: [
+                      TextSpan(text: doctorLabel.isNotEmpty && doctorLabel != 'logged_in_doctor' ? '$doctorLabel: ' : 'Logged-in Doctor: '),
+                      TextSpan(
+                          text: doctorName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                      TextSpan(text: facilityLabel.isNotEmpty && facilityLabel != 'facility' ? '  •  $facilityLabel: ' : '  •  Facility: '),
+                      TextSpan(
+                          text: facilityName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, color: AppColors.accentTeal)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            FilledButton.icon(
+              onPressed: onSubmitReport,
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(submitBtn.isNotEmpty && submitBtn != 'submit_report' ? submitBtn : 'Submit Clinical Report'),
             ),
           ],
-        ),
-        FilledButton.icon(
-          onPressed: onSubmitReport,
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('Submit Clinical Report'),
-        ),
-      ],
+        );
+      },
     );
   }
 }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/nav_destination.dart';
+import '../services/app_strings.dart';
 import '../state/auth.dart';
+import '../state/locale.dart';
 import '../theme/app_colors.dart';
+import '../widgets/language_selector_widget.dart';
 
 /// Below this width the sidebar becomes a bottom navigation bar. Phones and
 /// narrow windows get the same destinations, laid out for the form factor.
@@ -177,6 +180,10 @@ class _Sidebar extends StatelessWidget {
               ),
             const Spacer(),
             const Divider(color: Colors.white24, height: 1),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: LanguageSelectorWidget(),
+            ),
             _SignOutButton(onTap: onSignOut, compact: false),
             const SizedBox(height: 8),
           ],
@@ -234,13 +241,35 @@ class _NavTile extends StatelessWidget {
               Icon(destination.icon, size: 19, color: color),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  destination.label,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 13.5,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                  ),
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final lang = ref.watch(localeProvider);
+                    final keyMap = {
+                      'Dashboard': 'dashboard',
+                      'Patient Records': 'patient_records',
+                      'Submit Report': 'submit_report_nav',
+                      'Lab Dashboard': 'lab_dashboard',
+                      'Worklist': 'worklist',
+                      'Culture & AST': 'culture_ast',
+                      'Live Surveillance': 'live_surveillance',
+                      'Disease Trends': 'disease_trends',
+                      'Geographic Clusters': 'geographic_clusters',
+                      'AMR Watch': 'amr_watch',
+                      'Alerts': 'alerts',
+                      'Applications': 'applications',
+                    };
+                    final key = keyMap[destination.label] ?? destination.label;
+                    final translated = AppStrings.get(key, lang);
+                    final label = translated.isNotEmpty && translated != key ? translated : destination.label;
+                    return Text(
+                      label,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 13.5,
+                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
