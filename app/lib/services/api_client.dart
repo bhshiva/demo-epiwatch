@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/application_models.dart';
 import '../models/dashboard_models.dart';
 import '../models/ingestion_models.dart';
@@ -34,12 +35,22 @@ class ApiClient {
   }
 
   /// Base URL determination:
-  /// 1. Compile-time `--dart-define=API_URL=http://...` if provided.
-  /// 2. Android emulator default `10.0.2.2:8000`.
-  /// 3. Standard localhost `127.0.0.1:8000` (works on desktop/web/adb reverse).
+  /// 1. Runtime `.env` via flutter_dotenv (e.g. `API_URL` or `RENDER_API_URL`).
+  /// 2. Compile-time `--dart-define=API_URL=https://...` or `--dart-define-from-file=.env`.
+  /// 3. Default fallback to configured Render cloud endpoint.
   static String get defaultBaseUrl {
+    if (dotenv.isInitialized) {
+      final dotEnvUrl = dotenv.maybeGet('RENDER_API_URL') ??
+          dotenv.maybeGet('API_URL') ??
+          dotenv.maybeGet('API_BASE_URL');
+      if (dotEnvUrl != null && dotEnvUrl.trim().isNotEmpty) {
+        return dotEnvUrl.trim();
+      }
+    }
+
     const envUrl = String.fromEnvironment('API_URL',
-        defaultValue: String.fromEnvironment('API_BASE_URL'));
+        defaultValue: String.fromEnvironment('API_BASE_URL',
+            defaultValue: String.fromEnvironment('RENDER_API_URL')));
     if (envUrl.isNotEmpty) return envUrl;
     return 'https://epiwatch-backend-ek7z.onrender.com';
   }

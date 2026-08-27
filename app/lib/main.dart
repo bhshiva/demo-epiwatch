@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'models/session.dart';
 import 'screens/change_password_screen.dart';
 import 'screens/login_screen.dart';
@@ -7,7 +8,13 @@ import 'state/auth.dart';
 import 'theme/app_theme.dart';
 import 'workspaces.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (_) {
+    // Fallback gracefully if .env asset is missing
+  }
   runApp(const ProviderScope(child: EpiWatchApp()));
 }
 
