@@ -15,7 +15,15 @@ _SQLALCHEMY_URL = DATABASE_URL
 if _SQLALCHEMY_URL.startswith("postgresql://"):
     _SQLALCHEMY_URL = _SQLALCHEMY_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
-engine = create_engine(_SQLALCHEMY_URL, connect_args={"prepare_threshold": None})
+engine = create_engine(
+    _SQLALCHEMY_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    connect_args={
+        "prepare_threshold": None,
+        "connect_timeout": 15,
+    },
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 class Base(DeclarativeBase):
