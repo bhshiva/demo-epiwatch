@@ -66,9 +66,28 @@ class MutedText extends StatelessWidget {
   const MutedText(this.text, {super.key, this.textAlign});
 
   @override
-  Widget build(BuildContext context) => Text(
-        text,
-        textAlign: textAlign,
-        style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+  Widget build(BuildContext context) => Consumer(
+        builder: (context, ref, _) {
+          final lang = ref.watch(localeProvider);
+          final keyMap = {
+            'Reports are de-identified before aggregation. Coded fields follow WHO GLASS and ICMR-AMRSN vocabularies so data is comparable across facilities.':
+                'submit_report_sub',
+            'Search an existing patient to continue their record, or register a new one. Names are stored separately from surveillance data and never leave this facility.':
+                'patient_sub',
+            'Search by name, ABHA number, phone number or facility MRN':
+                'search_sub',
+          };
+          final translationKey = keyMap[text] ?? text;
+          final translated = AppStrings.get(translationKey, lang);
+          final display =
+              translated.isNotEmpty && translated != translationKey
+                  ? translated
+                  : text;
+          return Text(
+            display,
+            textAlign: textAlign,
+            style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+          );
+        },
       );
 }

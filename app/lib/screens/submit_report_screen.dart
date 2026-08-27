@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient_models.dart';
 import '../screens/shell_screen.dart';
+import '../services/app_strings.dart';
 import '../services/clinical_catalog.dart';
 import '../state/auth.dart';
+import '../state/locale.dart';
 import '../state/submit_report.dart';
 import '../theme/app_colors.dart';
 import '../widgets/intelligence_audit_banner.dart';
@@ -99,13 +101,45 @@ class _FieldLabel extends StatelessWidget {
   const _FieldLabel(this.text);
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Text(
-      text,
-      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-    ),
-  );
+  Widget build(BuildContext context) => Consumer(
+        builder: (context, ref, _) {
+          final lang = ref.watch(localeProvider);
+          final keyMap = {
+            'Full Name': 'full_name',
+            'Age': 'age',
+            'Sex': 'sex',
+            'District': 'district',
+            'Facility MRN (optional)': 'facility_mrn_optional',
+            'Chief Complaints': 'chief_complaints',
+            'Clinical Symptoms': 'symptoms',
+            'Medical History / Chronic Conditions': 'medical_history',
+            'Diagnosis': 'diagnosis',
+            'Diagnosis Status': 'diagnosis_status',
+            'Infection Origin': 'infection_origin',
+            'Infection Syndrome': 'syndrome',
+            'Patient Outcome': 'outcome',
+            'Specimen Type': 'specimen_type',
+            'Prescriptions': 'prescriptions',
+            'Medicine / Antibiotic': 'drug_name',
+            'Dosage': 'dosage',
+            'Duration': 'duration',
+          };
+          final translationKey = keyMap[text] ?? text;
+          final translated = AppStrings.get(translationKey, lang);
+          final display =
+              translated.isNotEmpty && translated != translationKey
+                  ? translated
+                  : text;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              display,
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+          );
+        },
+      );
 }
 
 class _SegmentGroup extends StatelessWidget {
@@ -149,32 +183,59 @@ class _SegmentChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: isSelected ? const Color(0xFFDCEFE4) : AppColors.bgSecondary,
-      borderRadius: BorderRadius.circular(6),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
+    return Consumer(
+      builder: (context, ref, _) {
+        final lang = ref.watch(localeProvider);
+        final keyMap = {
+          'Male': 'male',
+          'Female': 'female',
+          'Other': 'other',
+          'Community-acquired': 'community_acquired',
+          'Hospital-acquired': 'hospital_acquired',
+          'Healthcare-associated': 'healthcare_associated',
+          'Confirmed': 'confirmed',
+          'Suspected': 'suspected',
+          'Ruled out': 'ruled_out',
+          'Admitted - under treatment': 'admitted',
+          'Discharged - improved': 'discharged',
+          'Referred to higher centre': 'referred',
+          'Deceased': 'deceased',
+        };
+        final translationKey = keyMap[label] ?? label;
+        final translated = AppStrings.get(translationKey, lang);
+        final display =
+            translated.isNotEmpty && translated != translationKey
+                ? translated
+                : label;
+
+        return Material(
+          color: isSelected ? const Color(0xFFDCEFE4) : AppColors.bgSecondary,
+          borderRadius: BorderRadius.circular(6),
+          child: InkWell(
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: isSelected ? AppColors.accentTeal : AppColors.border,
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isSelected ? AppColors.accentTeal : AppColors.border,
+                ),
+              ),
+              child: Text(
+                display,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isSelected
+                      ? AppColors.accentGreen
+                      : AppColors.textSecondary,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
             ),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: isSelected
-                  ? AppColors.accentGreen
-                  : AppColors.textSecondary,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            ),
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
