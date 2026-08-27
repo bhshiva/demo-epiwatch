@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/surveillance_models.dart';
 import '../models/surveillance_demo_models.dart';
+import '../services/app_strings.dart';
+import '../state/locale.dart';
 import '../state/surveillance_dashboard.dart';
 import '../theme/app_colors.dart';
 import '../widgets/section_card.dart';
@@ -135,27 +137,35 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text('Alerts',
-                      style: TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.statusMonitoring.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text('REAL-TIME SURVEILLANCE ENGINE',
-                      style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.4,
-                          color: AppColors.statusMonitoring)),
-                ),
-              ],
+            Consumer(
+              builder: (context, ref, _) {
+                final lang = ref.watch(localeProvider);
+                final alertTitle = AppStrings.get('alerts', lang);
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        alertTitle.isNotEmpty && alertTitle != 'alerts' ? alertTitle : 'Alerts',
+                        style: const TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.statusMonitoring.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('REAL-TIME SURVEILLANCE ENGINE',
+                          style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4,
+                              color: AppColors.statusMonitoring)),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 6),
             const MutedText('Review, prioritize and manage emerging surveillance signals and outbreak risks.'),

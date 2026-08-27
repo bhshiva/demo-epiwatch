@@ -47,12 +47,30 @@ class SectionTitle extends StatelessWidget {
             'Linked Microbiology / Lab Results': 'lab_link',
             'Specimen & Isolation Details': 'record_culture',
             'Microbiology Lab Record': 'record_culture',
+            "Today's Patient Queue": 'todays_patient_queue',
+            'Patient': 'patient',
+            'Patient Context': 'patient_context',
+            'Active Outbreak Alerts': 'active_outbreak_alerts',
+            'Facility Signals': 'facility_signals',
+            'Recent Reports': 'recent_reports',
+            'Disease Activity This Week (Aggregate Trends)': 'disease_activity_trends',
+            'Patient Records': 'patient_records',
+            'Live Surveillance': 'live_surveillance',
+            'AMR Watch': 'amr_watch',
+            'Alerts': 'alerts',
+            'Applications': 'applications',
+            'Lab Dashboard': 'lab_dashboard',
+            'Worklist': 'worklist',
+            'Culture & AST': 'culture_ast',
           };
           final translationKey = keyMap[text] ?? text;
           final translatedText = AppStrings.get(translationKey, lang);
+          final display = translatedText.isNotEmpty && translatedText != translationKey
+              ? translatedText
+              : text;
 
           return Text(
-            translatedText,
+            display,
             style: const TextStyle(
                 fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
           );
@@ -76,6 +94,9 @@ class MutedText extends StatelessWidget {
                 'patient_sub',
             'Search by name, ABHA number, phone number or facility MRN':
                 'search_sub',
+            'Required: Patient, Age, Sex, District, Chief Complaint':
+                'validation_required',
+            'Please specify': 'please_specify',
           };
           final translationKey = keyMap[text] ?? text;
           final translated = AppStrings.get(translationKey, lang);

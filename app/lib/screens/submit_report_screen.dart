@@ -346,15 +346,21 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: () => notifier.searchPatients(),
-                  child: state.isSearching
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Search'),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final lang = ref.watch(localeProvider);
+                    final searchBtn = AppStrings.get('search', lang);
+                    return OutlinedButton(
+                      onPressed: () => notifier.searchPatients(),
+                      child: state.isSearching
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(searchBtn.isNotEmpty && searchBtn != 'search' ? searchBtn : 'Search'),
+                    );
+                  },
                 ),
               ],
             ),
@@ -384,12 +390,18 @@ class _PatientSectionState extends ConsumerState<_PatientSection> {
               ),
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: OutlinedButton(
-                onPressed: () {
-                  _nameController.text = state.patientSearchText.trim();
-                  notifier.startNewPatient();
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final lang = ref.watch(localeProvider);
+                  final regBtn = AppStrings.get('register_new_patient', lang);
+                  return OutlinedButton(
+                    onPressed: () {
+                      _nameController.text = state.patientSearchText.trim();
+                      notifier.startNewPatient();
+                    },
+                    child: Text(regBtn.isNotEmpty && regBtn != 'register_new_patient' ? regBtn : 'Register new patient'),
+                  );
                 },
-                child: const Text('Register new patient'),
               ),
             ),
           ],

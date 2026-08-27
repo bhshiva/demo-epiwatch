@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_selector/file_selector.dart';
 import 'dart:convert';
 import '../models/ingestion_models.dart';
 import '../services/api_client.dart';
+import '../services/app_strings.dart';
+import '../state/locale.dart';
 import '../theme/app_colors.dart';
 
-class OcrIngestionCard extends StatefulWidget {
+class OcrIngestionCard extends ConsumerStatefulWidget {
   final String documentType; // 'clinical_report' or 'lab_isolate'
   final ApiClient apiClient;
   final Function(OcrParseResult result) onParsed;
@@ -18,10 +21,10 @@ class OcrIngestionCard extends StatefulWidget {
   });
 
   @override
-  State<OcrIngestionCard> createState() => _OcrIngestionCardState();
+  ConsumerState<OcrIngestionCard> createState() => _OcrIngestionCardState();
 }
 
-class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerProviderStateMixin {
+class _OcrIngestionCardState extends ConsumerState<OcrIngestionCard> with SingleTickerProviderStateMixin {
   bool _isExpanded = true;
   bool _isProcessing = false;
   int _selectedTab = 0; // 0 = Samples, 1 = Google Lens / Vision Scan, 2 = Manual Transcription
@@ -153,10 +156,17 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(localeProvider);
     final isDoctor = widget.documentType == 'clinical_report';
-    final cardTitle = isDoctor
+    final rawTitle = isDoctor
         ? 'Seamless Clinical Ingestion & Google OCR'
         : 'Microbiology Laboratory AST Ingestion & Google OCR';
+    final transTitle = AppStrings.get(rawTitle, lang);
+    final cardTitle = transTitle.isNotEmpty && transTitle != rawTitle ? transTitle : rawTitle;
+
+    final quickTemplatesLabel = AppStrings.get('quick_templates', lang);
+    final googleLensLabel = AppStrings.get('lens_scan', lang);
+    final pasteNotesLabel = AppStrings.get('paste_notes', lang);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 22),
@@ -244,7 +254,9 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                         const SizedBox(height: 3),
                         Text(
                           isDoctor
-                              ? 'Scan prescriptions, notes, or patient slips with automatic entity normalization and false-data detection.'
+                              ? (AppStrings.get('scan_prescriptions_sub', lang).isNotEmpty && AppStrings.get('scan_prescriptions_sub', lang) != 'scan_prescriptions_sub'
+                                  ? AppStrings.get('scan_prescriptions_sub', lang)
+                                  : 'Scan prescriptions, notes, or patient slips with automatic entity normalization and false-data detection.')
                               : 'Scan microbiology culture sheets and AST disk diffusion / MIC tables with intrinsic resistance validation.',
                           style: const TextStyle(
                             fontSize: 12,
@@ -272,11 +284,11 @@ class _OcrIngestionCardState extends State<OcrIngestionCard> with SingleTickerPr
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildTabButton(0, 'Quick Templates', Icons.collections_bookmark_outlined),
+                    _buildTabButton(0, quickTemplatesLabel.isNotEmpty && quickTemplatesLabel != 'quick_templates' ? quickTemplatesLabel : 'Quick Templates', Icons.collections_bookmark_outlined),
                     const SizedBox(width: 8),
-                    _buildTabButton(1, 'Google Lens / Scan', Icons.camera_alt_outlined),
+                    _buildTabButton(1, googleLensLabel.isNotEmpty && googleLensLabel != 'lens_scan' ? googleLensLabel : 'Google Lens / Scan', Icons.camera_alt_outlined),
                     const SizedBox(width: 8),
-                    _buildTabButton(2, 'Paste / Type Notes', Icons.edit_note_outlined),
+                    _buildTabButton(2, pasteNotesLabel.isNotEmpty && pasteNotesLabel != 'paste_notes' ? pasteNotesLabel : 'Paste / Type Notes', Icons.edit_note_outlined),
                   ],
                 ),
               ),

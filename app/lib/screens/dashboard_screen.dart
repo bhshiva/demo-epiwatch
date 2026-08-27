@@ -307,32 +307,44 @@ class _PatientQueueState extends State<_PatientQueue> {
           ],
         ),
         const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columnSpacing: 36,
-            dataRowMinHeight: 64,
-            dataRowMaxHeight: 64,
-            headingTextStyle: const TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
-            columns: const [
-              DataColumn(label: Text('PATIENT')),
-              DataColumn(label: Text('AGE / GENDER')),
-              DataColumn(label: Text('CONDITION')),
-              DataColumn(label: Text('STATUS')),
-              DataColumn(label: Text('LAST VISIT')),
-            ],
-            rows: [
-              for (final p in pageItems)
-                DataRow(cells: [
-                  DataCell(Text(p.name)),
-                  DataCell(Text(p.ageGender)),
-                  DataCell(Text(p.condition)),
-                  DataCell(StatusChip(label: p.status)),
-                  DataCell(MutedText(p.lastVisit)),
-                ]),
-            ],
-          ),
+        Consumer(
+          builder: (context, ref, _) {
+            final lang = ref.watch(localeProvider);
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 36,
+                dataRowMinHeight: 64,
+                dataRowMaxHeight: 64,
+                headingTextStyle: const TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+                columns: [
+                  DataColumn(label: Text(AppStrings.get('col_patient', lang))),
+                  DataColumn(label: Text(AppStrings.get('col_age_gender', lang))),
+                  DataColumn(label: Text(AppStrings.get('col_condition', lang))),
+                  DataColumn(label: Text(AppStrings.get('col_status', lang))),
+                  DataColumn(label: Text(AppStrings.get('col_last_visit', lang))),
+                ],
+                rows: [
+                  for (final p in pageItems) ...[
+                    () {
+                      final transCond = AppStrings.get(p.condition, lang);
+                      final condDisplay = transCond.isNotEmpty && transCond != p.condition
+                          ? transCond
+                          : p.condition;
+                      return DataRow(cells: [
+                        DataCell(Text(p.name)),
+                        DataCell(Text(p.ageGender)),
+                        DataCell(Text(condDisplay)),
+                        DataCell(StatusChip(label: p.status)),
+                        DataCell(MutedText(p.lastVisit)),
+                      ]);
+                    }(),
+                  ],
+                ],
+              ),
+            );
+          },
         ),
       ],
     );
@@ -346,94 +358,100 @@ class _KpiRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tiles = [
-      (summary.patientsToday.toString(), 'Patients Today', AppColors.accentBlue, 4.2, 1.5, false),
-      (summary.reportsSubmittedTotal.toString(), 'Reports Submitted', AppColors.accentBlue, 12.4, 8.1, false),
-      (summary.activeConditions.toString(), 'Active Conditions', AppColors.accentBlue, -0.8, 0.0, true),
-      (alertCount.toString(), 'Facility Alerts', AppColors.accentMint, 3.8, -1.2, true),
-    ];
-    return LayoutBuilder(builder: (context, constraints) {
-      final availableWidth = constraints.maxWidth;
-      final bool useScroll = availableWidth < 800;
-      final double cardWidth = useScroll
-          ? 205.0
-          : (availableWidth - 10 * (tiles.length - 1)) / tiles.length;
+    return Consumer(
+      builder: (context, ref, _) {
+        final lang = ref.watch(localeProvider);
+        final tiles = [
+          (summary.patientsToday.toString(), AppStrings.get('kpi_patients_today', lang), AppColors.accentBlue, 4.2, 1.5, false),
+          (summary.reportsSubmittedTotal.toString(), AppStrings.get('kpi_reports_submitted', lang), AppColors.accentBlue, 12.4, 8.1, false),
+          (summary.activeConditions.toString(), AppStrings.get('kpi_active_conditions', lang), AppColors.accentBlue, -0.8, 0.0, true),
+          (alertCount.toString(), AppStrings.get('kpi_facility_alerts', lang), AppColors.accentMint, 3.8, -1.2, true),
+        ];
+        return LayoutBuilder(builder: (context, constraints) {
+          final availableWidth = constraints.maxWidth;
+          final bool useScroll = availableWidth < 800;
+          final double cardWidth = useScroll
+              ? 205.0
+              : (availableWidth - 10 * (tiles.length - 1)) / tiles.length;
 
-      final cardWidgets = [
-        for (final t in tiles)
-          SizedBox(
-            width: cardWidth,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
+          final cardWidgets = [
+            for (final t in tiles)
+              SizedBox(
+                width: cardWidth,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
                   ),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        t.$1,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: t.$3,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        t.$2.isNotEmpty ? t.$2 : 'KPI',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      DualTrendRow(
+                        delta7d: t.$4,
+                        delta30d: t.$5,
+                        higherIsWorse: t.$6,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+          ];
+
+          if (useScroll) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 children: [
-                  Text(
-                    t.$1,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: t.$3,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    t.$2,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  DualTrendRow(
-                    delta7d: t.$4,
-                    delta30d: t.$5,
-                    higherIsWorse: t.$6,
-                  ),
+                  for (int i = 0; i < cardWidgets.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 10),
+                    cardWidgets[i],
+                  ],
                 ],
               ),
-            ),
-          ),
-      ];
+            );
+          }
 
-      if (useScroll) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               for (int i = 0; i < cardWidgets.length; i++) ...[
                 if (i > 0) const SizedBox(width: 10),
-                cardWidgets[i],
+                Expanded(child: cardWidgets[i]),
               ],
             ],
-          ),
-        );
-      }
-
-      return Row(
-        children: [
-          for (int i = 0; i < cardWidgets.length; i++) ...[
-            if (i > 0) const SizedBox(width: 10),
-            Expanded(child: cardWidgets[i]),
-          ],
-        ],
-      );
-    });
+          );
+        });
+      },
+    );
   }
 }
 
@@ -597,98 +615,121 @@ class _TrendCard extends StatelessWidget {
 }
 
 class _RightRail extends StatelessWidget {
-  const _RightRail();
+  const _RightRail({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SectionTitle('Facility Signals'),
-              const SizedBox(height: 12),
-              for (final s in DemoData.facilitySignals)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      Expanded(
+    return Consumer(
+      builder: (context, ref, _) {
+        final lang = ref.watch(localeProvider);
+        return Column(
+          children: [
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionTitle('Facility Signals'),
+                  const SizedBox(height: 12),
+                  for (final s in DemoData.facilitySignals) ...[
+                    () {
+                      final transCat = AppStrings.get(s.category, lang);
+                      final catDisplay = transCat.isNotEmpty && transCat != s.category
+                          ? transCat
+                          : s.category;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(catDisplay,
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary)),
+                                  const SizedBox(height: 2),
+                                  MutedText(s.change),
+                                ],
+                              ),
+                            ),
+                            StatusChip(label: s.level),
+                          ],
+                        ),
+                      );
+                    }(),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(children: [
+                    Text('⚠  ', style: TextStyle(fontSize: 14)),
+                    Flexible(child: SectionTitle('Active Outbreak Alerts')),
+                  ]),
+                  const SizedBox(height: 12),
+                  for (final a in DemoData.outbreakAlerts) ...[
+                    () {
+                      final transTitle = AppStrings.get(a.title, lang);
+                      final titleDisplay = transTitle.isNotEmpty && transTitle != a.title
+                          ? transTitle
+                          : a.title;
+                      final transDetail = AppStrings.get(a.detail, lang);
+                      final detailDisplay = transDetail.isNotEmpty && transDetail != a.detail
+                          ? transDetail
+                          : a.detail;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.only(left: 11),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            left: BorderSide(
+                                color: (_statusFg(a.severity)), width: 3),
+                          ),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(s.category,
-                                style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary)),
-                            const SizedBox(height: 2),
-                            MutedText(s.change),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(titleDisplay,
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary)),
+                                ),
+                                const SizedBox(width: 8),
+                                StatusChip(label: a.severity),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(detailDisplay,
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ],
                         ),
-                      ),
-                      StatusChip(label: s.level),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFBEB),
-            border: Border.all(color: const Color(0xFFFDE68A)),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(children: [
-                Text('⚠  ', style: TextStyle(fontSize: 14)),
-                Flexible(child: SectionTitle('Active Outbreak Alerts')),
-              ]),
-              const SizedBox(height: 12),
-              for (final a in DemoData.outbreakAlerts)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 14),
-                  padding: const EdgeInsets.only(left: 11),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      left: BorderSide(
-                          color: (_statusFg(a.severity)), width: 3),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(a.title,
-                                style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary)),
-                          ),
-                          const SizedBox(width: 8),
-                          StatusChip(label: a.severity),
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      Text(a.detail,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
+                      );
+                    }(),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
